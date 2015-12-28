@@ -6,3 +6,7 @@ class LoginError(Exception):
 class LogoutError(Exception):
     """Error during logout"""
 
+
+class RoomError(Exception):
+    """Error during room operations"""
+

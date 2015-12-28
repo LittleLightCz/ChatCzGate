@@ -4,7 +4,7 @@ import re
 
 from enum import Enum
 from bs4 import BeautifulSoup
-from error import LoginError, LogoutError
+from error import *
 
 CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
@@ -46,6 +46,8 @@ class Room:
     """
 
     def __init__(self, name, description):
+        # Let's have ID as a string for the ease of further manipulation
+        self.id = "-1"
         self.name = name
         self.description = description
 
@@ -118,8 +120,8 @@ class ChatAPI:
         if nav_user:
             self.logged = True
         elif alert:
-            text = re.sub(r"\n.+?\n", "", alert.text).strip()
-            raise LoginError(text)
+            match = re.search(r"\n.+?\n.*$",alert.text)
+            raise LoginError(match.group().strip())
         else:
             raise LoginError("Failed to login for unknown reason.")
 
@@ -135,3 +137,20 @@ class ChatAPI:
             log.info("Logout successful!")
         else:
             raise LogoutError("Logout failed!")
+
+    def join(self, room):
+        """
+        Enter the room
+
+        Parameters:
+            room : Room
+        """
+        log.info("Entering ther room: "+room.name)
+        resp = req.get(CHAT_CZ_URL+"/"+room.name, headers=self.headers, cookies=self.cookies)
+
+        id_match = re.search(r"/leaveRoom/(\d+)", resp.text)
+        if id_match:
+            room.id = id_match.group(1)
+            log.info("Room ID is: "+room.id)
+        else:
+            raise RoomError("Failed to get room ID!")
