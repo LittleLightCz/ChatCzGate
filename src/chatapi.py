@@ -11,6 +11,9 @@ LOGIN_URL = CHAT_CZ_URL + "/login"
 LOGOUT_URL = CHAT_CZ_URL + "/logout"
 
 JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
+JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
+JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
+
 
 #-------------------------------------------------------------------------------
 #Temporary logger init ... will be moved to main script file afterwards ...
@@ -132,6 +135,8 @@ class ChatAPI:
         Logs out the user
         """
         resp = req.get(LOGOUT_URL, headers=self.headers, cookies=self.cookies)
+        self.cookies.update(resp.cookies)
+
         if "Úspěšné odhlášení" in resp.text:
             self.logged = False
             log.info("Logout successful!")
@@ -147,6 +152,7 @@ class ChatAPI:
         """
         log.info("Entering ther room: "+room.name)
         resp = req.get(CHAT_CZ_URL+"/"+room.name, headers=self.headers, cookies=self.cookies)
+        self.cookies.update(resp.cookies)
 
         id_match = re.search(r"/leaveRoom/(\d+)", resp.text)
         if id_match:
@@ -154,3 +160,42 @@ class ChatAPI:
             log.info("Room ID is: "+room.id)
         else:
             raise RoomError("Failed to get room ID!")
+
+        # Get header
+        resp = req.post(JSON_HEADER_URL, headers=self.headers, cookies=self.cookies)
+        self.cookies.update(resp.cookies)
+
+        # Get room user info (TODO - may be in timer)
+        data = {"roomId":room.id}
+        resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self.headers, data=data, cookies=self.cookies)
+        self.cookies.update(resp.cookies)
+
+    def say(self, room, text, to_user=None):
+        """
+        Sends text to the room
+
+        Parameters:
+            room : Room
+            text : string
+                Text to be told
+            to_user : string
+                Username to whisper to. Leave as None when talking to all.
+        """
+        data = {
+            "roomId": room.id,
+            "chatIndex": "14|4",
+            "text": text,
+            "userIdTo": "0"
+        }
+
+        #Here check for user's ID and update userIdTo
+        #...... TODO
+
+        log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
+        resp = req.post(JSON_TEXT_URL, headers=self.headers, data=data, cookies=self.cookies)
+        self.cookies.update(resp.cookies)
+
+        # Deal with response? TODO
+        json = resp.json()
+
+
