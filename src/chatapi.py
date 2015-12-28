@@ -4,7 +4,7 @@ import re
 
 from enum import Enum
 from bs4 import BeautifulSoup
-from error import LoginError
+from error import LoginError, LogoutError
 
 CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
@@ -59,6 +59,9 @@ class ChatAPI:
     """
 
     def __init__(self):
+        """
+        Constructor
+        """
         self.logged = False
 
         log.info("Getting cookie ...")
@@ -92,7 +95,7 @@ class ChatAPI:
 
     def login_as_anonymous(self, user, gender=Gender.MALE):
         """
-        Logins to the server as an anonymous user.
+        Logs in to the server as an anonymous user.
 
         Parameters:
             user : string
@@ -122,6 +125,13 @@ class ChatAPI:
 
         log.info("Login successful!")
 
-
-
-
+    def logout(self):
+        """
+        Logs out the user
+        """
+        resp = req.get(LOGOUT_URL, headers=self.headers, cookies=self.cookies)
+        if "Úspěšné odhlášení" in resp.text:
+            self.logged = False
+            log.info("Logout successful!")
+        else:
+            raise LogoutError("Logout failed!")
