@@ -1,4 +1,6 @@
 import logging as log
+from enum import Enum
+
 import requests as req
 from bs4 import BeautifulSoup
 
@@ -27,6 +29,11 @@ log.getLogger('').addHandler(console)
 
 #-------------------------------------------------------------------------------
 
+class Gender(Enum):
+    """Enum for gender"""
+    MALE = 1
+    FEMALE = 2
+
 
 class Room:
     """
@@ -38,7 +45,7 @@ class Room:
         self.description = description
 
     def __str__(self):
-        return "{0}\t ({1})".format(self.name, self.description)
+        return self.name
 
 
 class ChatAPI:
@@ -56,13 +63,13 @@ class ChatAPI:
         resp = req.get(CHAT_CZ_URL)
         html = BeautifulSoup(resp.text, "html.parser")
 
-        def _to_room(div):
+        def to_room(div):
             name = div.a.h4.text.strip()
             description = div.a.text.replace(name,"",1).replace("[\n\r]","").strip()
             return Room(name, description)
 
         divs = html.find_all("div","row row-xs-height list-group")
-        rooms = [ _to_room(div) for div in divs ]
+        rooms = [ to_room(div) for div in divs ]
         rooms.sort(key = lambda r: r.name)
         return rooms
 
