@@ -1,9 +1,10 @@
 import logging as log
-from enum import Enum
-
 import requests as req
-from bs4 import BeautifulSoup
+import re
 
+from enum import Enum
+from bs4 import BeautifulSoup
+from error import LoginError
 
 CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
@@ -58,11 +59,13 @@ class ChatAPI:
     """
 
     def __init__(self):
+        self.logged = False
+
         log.info("Getting cookie ...")
         self.cookies = req.get(LOGIN_URL).cookies
 
         self.headers = {
-            "User-Agent" : "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36"
+            "User-Agent":"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36"
         }
         log.debug(self.headers)
         pass
@@ -77,7 +80,7 @@ class ChatAPI:
 
         def to_room(div):
             name = div.a.h4.text.strip()
-            description = div.a.text.replace(name,"",1).replace("[\n\r]","").strip()
+            description = re.sub(r"[\s\S]+?\n\n","",div.a.text).strip()
             return Room(name, description)
 
         divs = html.find_all("div","row row-xs-height list-group")
@@ -86,7 +89,6 @@ class ChatAPI:
 
         log.debug([r.name for r in rooms])
         return rooms
-
 
     def login_as_anonymous(self,user,gender = Gender.MALE):
         """
@@ -98,12 +100,28 @@ class ChatAPI:
             gender : Gender
                      Gender from Gender enum. Default is MALE.
         """
-        params = {"nick" : user, "sex" : gender.value}
+        data = {"nick" : user, "sex" : gender.value}
 
         log.info("Logging anonymously as: {0} ({1})".format(user,gender.value))
-        resp = req.post(LOGIN_URL, headers=self.headers, params=params, cookies=self.cookies)
+        resp = req.post(LOGIN_URL, headers=self.headers, data=data, cookies=self.cookies)
         self.cookies.update(resp.cookies)
 
-        print("nav-user" in resp.text)
+        # Check whether the login was successful
+        html = BeautifulSoup(resp.text, "html.parser")
+        nav_user = html.find("li", {"id": "nav-user"})
+        alert = html.find("div", {"class": "alert"})
+
+        self.logged = False
+        if nav_user:
+            self.logged = True
+        elif alert:
+            text = re.sub(r"\n.+?\n","",alert.text,1).strip()
+            raise LoginError(text)
+        else:
+            raise LoginError("Failed to login for unknown reason.")
+
+        log.info("Login successful!")
+
+
 
 
