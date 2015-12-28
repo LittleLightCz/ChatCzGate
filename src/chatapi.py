@@ -80,17 +80,17 @@ class ChatAPI:
 
         def to_room(div):
             name = div.a.h4.text.strip()
-            description = re.sub(r"[\s\S]+?\n\n","",div.a.text).strip()
+            description = re.sub(r"[\s\S]+?\n\n", "", div.a.text).strip()
             return Room(name, description)
 
         divs = html.find_all("div","row row-xs-height list-group")
-        rooms = [ to_room(div) for div in divs ]
-        rooms.sort(key = lambda r: r.name)
+        rooms = [to_room(div) for div in divs]
+        rooms.sort(key=lambda r: r.name)
 
         log.debug([r.name for r in rooms])
         return rooms
 
-    def login_as_anonymous(self,user,gender = Gender.MALE):
+    def login_as_anonymous(self, user, gender=Gender.MALE):
         """
         Logins to the server as an anonymous user.
 
@@ -100,9 +100,9 @@ class ChatAPI:
             gender : Gender
                      Gender from Gender enum. Default is MALE.
         """
-        data = {"nick" : user, "sex" : gender.value}
+        data = {"nick": user, "sex": gender.value}
 
-        log.info("Logging anonymously as: {0} ({1})".format(user,gender.value))
+        log.info("Logging anonymously as: {0} ({1})".format(user, gender.value))
         resp = req.post(LOGIN_URL, headers=self.headers, data=data, cookies=self.cookies)
         self.cookies.update(resp.cookies)
 
@@ -115,7 +115,7 @@ class ChatAPI:
         if nav_user:
             self.logged = True
         elif alert:
-            text = re.sub(r"\n.+?\n","",alert.text,1).strip()
+            text = re.sub(r"\n.+?\n", "", alert.text).strip()
             raise LoginError(text)
         else:
             raise LoginError("Failed to login for unknown reason.")
