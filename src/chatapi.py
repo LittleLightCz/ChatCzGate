@@ -1,10 +1,14 @@
 import logging as log
 import requests as req
-import re
+import re, schedule
+import threading
 
 from enum import Enum
+
+import time
 from bs4 import BeautifulSoup
 from error import *
+from room import Room
 
 CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
@@ -14,6 +18,8 @@ JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
 JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
 JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
 
+MESSAGES_CHECK_INTERVAL = 5
+USERS_CHECK_INTERVAL = 50
 
 #-------------------------------------------------------------------------------
 #Temporary logger init ... will be moved to main script file afterwards ...
@@ -43,20 +49,19 @@ class Gender(Enum):
     FEMALE = "f"
 
 
-class Room:
+class ChatEvent:
     """
-    Data holder class for room information
+    Class that defines chat events. Extend this class and overwrite it's methods with your implementation
     """
 
-    def __init__(self, name, description, users_count):
-        # Let's have ID as a string for the ease of further manipulation
-        self.id = "-1"
-        self.name = name
-        self.description = description
-        self.users_count = users_count
+    def new_message(self):
+        pass
 
-    def __str__(self):
-        return self.name
+    def users_joined(self):
+        pass
+
+    def users_left(self):
+        pass
 
 
 class ChatAPI:
@@ -64,20 +69,42 @@ class ChatAPI:
     Class that enables access to chat.cz
     """
 
-    def __init__(self):
+    def __init__(self, event_handler=ChatEvent()):
         """
         Constructor
+
+        Parameters:
+            event_handler : ChatEvent
         """
+        self._event = event_handler
         self.logged = False
 
-        log.info("Getting cookie ...")
-        self.cookies = req.get(LOGIN_URL).cookies
+        log.info("Getting cookies ...")
+        self._cookies = req.get(LOGIN_URL).cookies
 
-        self.headers = {
+        self._headers = {
             "User-Agent":"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36"
         }
-        log.debug(self.headers)
-        pass
+        log.debug(self._headers)
+
+        # Set up internal room list
+        self._room_list = []
+
+        # Set up schedule
+        self._scheduler_jobs = []
+        self._scheduler_jobs.append(schedule.every(USERS_CHECK_INTERVAL).seconds.do(self._users_check))
+        self._scheduler_jobs.append(schedule.every(MESSAGES_CHECK_INTERVAL).seconds.do(self._messages_check))
+
+    def _run_schedule_continuously(self):
+        while self.logged:
+            schedule.run_pending()
+            time.sleep(1)
+
+    def _users_check(self):
+        print("Users check")
+
+    def _messages_check(self):
+        print("Messages check")
 
     def get_room_list(self):
         """
@@ -113,8 +140,8 @@ class ChatAPI:
         data = {"nick": user, "sex": gender.value}
 
         log.info("Logging anonymously as: {0} ({1})".format(user, gender.value))
-        resp = req.post(LOGIN_URL, headers=self.headers, data=data, cookies=self.cookies)
-        self.cookies.update(resp.cookies)
+        resp = req.post(LOGIN_URL, headers=self._headers, data=data, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
 
         # Check whether the login was successful
         html = BeautifulSoup(resp.text, "html.parser")
@@ -132,18 +159,25 @@ class ChatAPI:
 
         log.info("Login successful!")
 
+        # Run schedule
+        threading.Thread(target=self._run_schedule_continuously).start()
+
     def logout(self):
         """
         Logs out the user
         """
-        resp = req.get(LOGOUT_URL, headers=self.headers, cookies=self.cookies)
-        self.cookies.update(resp.cookies)
+        resp = req.get(LOGOUT_URL, headers=self._headers, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
 
         if "Úspěšné odhlášení" in resp.text:
             self.logged = False
             log.info("Logout successful!")
         else:
             raise LogoutError("Logout failed!")
+
+        log.debug("Removing scheduler events ...")
+        for job in self._scheduler_jobs:
+            schedule.cancel_job(job)
 
     def join(self, room):
         """
@@ -153,8 +187,8 @@ class ChatAPI:
             room : Room
         """
         log.info("Entering ther room: "+room.name)
-        resp = req.get(CHAT_CZ_URL+"/"+room.name, headers=self.headers, cookies=self.cookies)
-        self.cookies.update(resp.cookies)
+        resp = req.get(CHAT_CZ_URL +"/" + room.name, headers=self._headers, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
 
         id_match = re.search(r"/leaveRoom/(\d+)", resp.text)
         if id_match:
@@ -164,13 +198,13 @@ class ChatAPI:
             raise RoomError("Failed to get room ID!")
 
         # Get header
-        resp = req.post(JSON_HEADER_URL, headers=self.headers, cookies=self.cookies)
-        self.cookies.update(resp.cookies)
+        resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
 
         # Get room user info (TODO - may be in timer)
         data = {"roomId":room.id}
-        resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self.headers, data=data, cookies=self.cookies)
-        self.cookies.update(resp.cookies)
+        resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
 
     def say(self, room, text, to_user=None):
         """
@@ -194,8 +228,8 @@ class ChatAPI:
         #...... TODO
 
         log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
-        resp = req.post(JSON_TEXT_URL, headers=self.headers, data=data, cookies=self.cookies)
-        self.cookies.update(resp.cookies)
+        resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
 
         # Deal with response? TODO
         json = resp.json()
