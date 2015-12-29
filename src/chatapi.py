@@ -48,11 +48,12 @@ class Room:
     Data holder class for room information
     """
 
-    def __init__(self, name, description):
+    def __init__(self, name, description, users_count):
         # Let's have ID as a string for the ease of further manipulation
         self.id = "-1"
         self.name = name
         self.description = description
+        self.users_count = users_count
 
     def __str__(self):
         return self.name
@@ -89,7 +90,8 @@ class ChatAPI:
         def to_room(div):
             name = div.a.h4.text.strip()
             description = re.sub(r"[\s\S]+?\n\n", "", div.a.text).strip()
-            return Room(name, description)
+            users_count = len(div.div.find_all("span"))
+            return Room(name, description, users_count)
 
         divs = html.find_all("div","row row-xs-height list-group")
         rooms = [to_room(div) for div in divs]
