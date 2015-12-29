@@ -5,32 +5,33 @@ import sys
 from chatapi import ChatAPI
 
 IRC_LISTEN_PORT = 32132  # TODO get from config file
+UNICODE_SPACE = u'\xa0'
 
 
 class IRCServer(socketserver.StreamRequestHandler):
     """ IRC connection handler """
 
     line_separator = '\r\n'  # TODO regex
-    recv_buffer = ''
-    nickname = ''
 
-    chatapi = ChatAPI()
+    def __init__(self, request, client_address, server):
+        super().__init__(request, client_address, server)
+        self.chatapi = ChatAPI()
+        self.nickname = ''
 
     def handle(self):
         """ Handles incoming message """
         while True:
-            data = self.request.recv(512).decode('utf-8')
+            data = self.request.recv(512).decode('utf-8')  # TODO readline ?
             lines = data.split(self.line_separator)
-            self.recv_buffer = lines[-1]  # leave last (maybe incomplete) line in buffer
             for line in lines[:-1]:
                 self.parse_line(line)
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
-        split_line = line.split(' ')
+        split_line = line.split(' ')  # TODO regex to handle ':' data containing spaces
         command = split_line[0]
         args = split_line[1:]  # TODO improve logic
-        log.debug("Parsed command %s args: %s " % (command, args))
+        log.debug("Parsed command %s args: %s " % (command, args))  # TODO debug only - unsafe, remove
         self.handle_command(command, args)
 
     def reply(self, response_number, message):
@@ -40,19 +41,21 @@ class IRCServer(socketserver.StreamRequestHandler):
         log.debug("Sending: %s" % response)
         self.request.send(str.encode(response))
 
+    def not_enough_arguments_reply(self, command_name):
+        self.reply(461, "%s :Not enough parameters" % command_name)
+
     def handle_command(self, command, args):
         """ IRC command handlers """
         def user_handler():
-            self.nickname = args[0]
-            # hostname = args[1]
-            # servername = args[2]
-            # real_name = args[3][1:]
-            self.reply(1, "Welcome to ChatCzGate!")
-            self.reply(376, ":End of /MOTD command")
+            if len(args) == 4:
+                self.nickname = args[0]  # TODO take nickname from USER or NICK ?
+                self.reply(1, "Welcome to ChatCzGate!")
+                self.reply(376, ":End of /MOTD command")
+            else:
+                self.not_enough_arguments_reply(command)
 
         def nick_handler():
             self.nickname = args[0]
-            self.reply(2, "Test")
 
         def pass_handler():
             # password = args[0][1:]
@@ -61,20 +64,20 @@ class IRCServer(socketserver.StreamRequestHandler):
 
         def list_handler():
             available_channels = self.chatapi.get_room_list()
-
             if len(args) == 2:  # ask another server
                 pass
-
-            if len(args) == 1:  # expecting comma separated channels, return their topics
+            elif len(args) == 1:  # expecting comma separated channels, return their topics
                 channels = args[0].split(',')
                 for channel in channels:
                     if channel in available_channels:
                         pass  # TODO
-            else:  # return all rooms
+            elif len(args) == 0:  # return all rooms
                 self.reply(321, "Channel :Users  Name")
-                for channel in available_channels:  # TODO implement user count
-                    self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', u'\xa0'), 0, channel.description))
+                for channel in available_channels:
+                    self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', UNICODE_SPACE), channel.users_count, channel.description))
                 self.reply(323, ":End of /LIST")
+            else:
+                self.not_enough_arguments_reply(command)
 
         commands = {  # TODO other commands
             # """ Supported commands -> handlers map """
@@ -86,7 +89,6 @@ class IRCServer(socketserver.StreamRequestHandler):
 
         try:
             log.debug("requesting command : %s", command)
-
             commands[command]()
         except KeyError:
             log.error("IRC command not found: %s", command)
@@ -96,7 +98,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """ Allows multiple clients """
     pass
 
-t = ThreadedTCPServer(('localhost', IRC_LISTEN_PORT), IRCServer)
+t = ThreadedTCPServer(('localhost', IRC_LISTEN_PORT), IRCServer)  # TODO hostname from config
 
 try:
     t.serve_forever()
