@@ -29,9 +29,7 @@ class User():
     def __init__(self, data):
         """
         Constructor from JSON data found in the room page right after entrance
-
-        Parameters:
-            data : JSON data object
+        :param data: JSON data object
         """
         self.id = data["id"]
         self.name = data["nick"]

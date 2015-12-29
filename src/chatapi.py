@@ -66,11 +66,11 @@ class ChatAPI:
     def __init__(self, event_handler=ChatEvent()):
         """
         Constructor
-
-        Parameters:
-            event_handler : ChatEvent
+        :param event_handler: ChatEvent
         """
         self._event = event_handler
+        self._event_lock = threading.Lock()
+
         self.logged = False
 
         log.info("Getting cookies ...")
@@ -95,7 +95,17 @@ class ChatAPI:
             time.sleep(1)
 
     def _users_check(self):
-        print("Users check")
+        """
+        Private method that updates user idle times. It is scheduled to run every USERS_CHECK_INTERVAL seconds.
+        """
+
+        # Get header
+        resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
+
+        # Get room's user info
+        for room in self._room_list:
+            data = {"roomId": room.id}
+            resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
 
     def _messages_check(self):
         print("Messages check")
@@ -125,11 +135,10 @@ class ChatAPI:
         """
         Logs in to the server as an anonymous user.
 
-        Parameters:
-            user : string
-                   Username
-            gender : Gender
-                     Gender from Gender enum. Default is MALE.
+        :param user: string
+            Username
+        :param gender: Gender
+            Gender from Gender enum. Default is MALE.
         """
         data = {"nick": user, "sex": gender.value}
 
@@ -175,10 +184,8 @@ class ChatAPI:
 
     def join(self, room):
         """
-        Enter the room
-
-        Parameters:
-            room : Room
+        Enters the room
+        :param room: Room
         """
         log.info("Entering ther room: "+room.name)
         resp = req.get(CHAT_CZ_URL +"/" + room.name, headers=self._headers, cookies=self._cookies)
@@ -199,25 +206,21 @@ class ChatAPI:
         else:
             raise RoomError("Failed to get user list for the room: "+room)
 
-        # Get header
-        resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
-        self._cookies.update(resp.cookies)
+        # Add room to the list
+        self._room_list.append(room)
 
-        # Get room user info (TODO - may be in timer)
-        data = {"roomId":room.id}
-        resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
-        self._cookies.update(resp.cookies)
+        # Trigger users check
+        self._users_check()
 
     def say(self, room, text, to_user=None):
         """
         Sends text to the room
 
-        Parameters:
-            room : Room
-            text : string
-                Text to be told
-            to_user : string
-                Username to whisper to. Leave as None when talking to all.
+        :param room: Room
+        :param text: string
+            Text to be told
+        :param to_user: string
+            Username to whisper to. Leave as None when talking to all.
         """
         data = {
             "roomId": room.id,
