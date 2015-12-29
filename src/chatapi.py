@@ -3,12 +3,12 @@ import requests as req
 import re, schedule
 import threading
 
-from enum import Enum
-
 import time
 from bs4 import BeautifulSoup
+
+import js
 from error import *
-from room import Room
+from room import Room, User, Gender
 
 CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
@@ -42,12 +42,6 @@ console.setFormatter(formatter)
 log.getLogger('').addHandler(console)
 
 #-------------------------------------------------------------------------------
-
-class Gender(Enum):
-    """Enum for gender"""
-    MALE = "m"
-    FEMALE = "f"
-
 
 class ChatEvent:
     """
@@ -196,6 +190,14 @@ class ChatAPI:
             log.info("Room ID is: "+room.id)
         else:
             raise RoomError("Failed to get room ID!")
+
+        # Get users in the room
+        match = re.search(r"var userList\s*=\s*({[\s\S]+?});", resp.text)
+        if match:
+            data = js.to_py_json(match.group(1))["data"]
+            room.user_list = [User(val) for key,val in data.items()]
+        else:
+            raise RoomError("Failed to get user list for the room: "+room)
 
         # Get header
         resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
