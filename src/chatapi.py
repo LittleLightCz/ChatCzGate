@@ -43,18 +43,40 @@ log.getLogger('').addHandler(console)
 
 #-------------------------------------------------------------------------------
 
+
 class ChatEvent:
     """
-    Class that defines chat events. Extend this class and overwrite it's methods with your implementation
+    Class that defines chat events. Extend this class and overwrite it's methods with your implementation.
     """
 
-    def new_message(self):
+    def new_message(self, room, user, text, whisper):
+        """
+        This method is called when there is new incoming message from the room
+        :param room: Room
+        :param user: User
+        :param text: string
+        :param whisper: bool
+            True if the user is whispering to you
+        """
+        log.debug("<{0}> {1}: {2}".format(room.name, user.name, text))
         pass
 
-    def users_joined(self):
+    def user_joined(self, room, user):
+        """
+        This method is called when user joins the room
+        :param room: Room
+        :param user: User
+        """
+        log.debug("{1} joined {0}".format(room.name, user.name))
         pass
 
-    def users_left(self):
+    def user_left(self, room, user):
+        """
+        This method is called when user lefts the room
+        :param room: Room
+        :param user: User
+        """
+        log.debug("{1} left {0}".format(room.name, user.name))
         pass
 
 
@@ -107,8 +129,56 @@ class ChatAPI:
             data = {"roomId": room.id}
             resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
 
+
+    def _process_message(self, room, msg):
+        """
+        Parse and process JSON message data
+        :param room: Room
+        :param msg: JSON data object
+        """
+        if "s" in msg:
+            # System message
+            if msg["s"] == "enter":
+                user = User(msg["user"])
+                room.add_user(user)
+                self._event.user_joined(room, user)
+            elif msg["s"] in ["leave","auto_leave"]:
+                user = room.get_user_by_id(msg["uid"])
+                if user:
+                    room.remove_user(user)
+                    self._event.user_left(room, user)
+        else:
+            # Standard chat message
+            user = room.get_user_by_id(msg["uid"])
+            whisper = True if "w" in msg else False
+            self._event.new_message(room, user, msg["t"], whisper)
+            pass
+
     def _messages_check(self):
-        print("Messages check")
+        """
+        Checks for new messages and triggers appropriate event
+        :param room: Room
+        """
+        for room in self._room_list:
+            data = {
+                "roomId": room.id,
+                "chatIndex": room.chat_index,
+            }
+
+            log.debug("Checking for new messages in: "+room.name)
+            resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
+            self._cookies.update(resp.cookies)
+
+            json_data = resp.json()
+            if json_data['success']:
+                # Update chat index
+                room.chat_index = json_data['data']['index']
+                # Get messages
+                messages = json_data['data']['data']
+                for msg in messages:
+                    self._process_message(room, msg)
+            else:
+                log.error("Failed to get new messages: "+json_data['statusMessage'])
 
     def get_room_list(self):
         """
@@ -235,8 +305,5 @@ class ChatAPI:
         log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
         resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
         self._cookies.update(resp.cookies)
-
-        # Deal with response? TODO
-        json = resp.json()
 
 

@@ -1,10 +1,11 @@
+import logging as log
 from enum import Enum
+
 
 class Room:
     """
     Data holder class for room information
     """
-
     def __init__(self, name, description, users_count):
         # Let's have ID as a string for the ease of further manipulation
         self.id = "-1"
@@ -12,17 +13,40 @@ class Room:
         self.description = description
         self.users_count = users_count
         self.user_list = []
+        self.chat_index = ""
 
     def __str__(self):
         return self.name
 
+    def add_user(self, user):
+        """
+        Adds user to the user_list
+        :param user: User
+        """
+        self.user_list.append(user)
 
-class User():
+    def remove_user(self, user):
+        """
+        Removes user from the user_list
+        :param user: User
+        """
+        u = self.get_user_by_id(user.id)
+        if u:
+            self.user_list.remove(u)
+        else:
+            log.error("Failed to remove the user: "+user.name)
+
+    def get_user_by_id(self, id):
+        return next((u for u in self.user_list if u.id == id), None)
+
+
+
+class User:
     """
     Data holder class for user
     """
     def __init__(self):
-        self.id = "-1"
+        self.id = -1
         self.name = ""
         self.gender = Gender.MALE
 
@@ -31,13 +55,13 @@ class User():
         Constructor from JSON data found in the room page right after entrance
         :param data: JSON data object
         """
-        self.id = data["id"]
+        self.id = int(data["id"])
         self.name = data["nick"]
-        self.gender = Gender.MALE if data["sex"] == "m" else Gender.FEMALE
+        self.gender = Gender(data["sex"])
         self.anonymous = bool(data["anonymous"])
         self.idle = int(data["interval_idle"])
-        self.admin = int(data["roomAdmin"])
-        self.karma = int(data["karmaLevel"])
+        self.admin = int(data["roomAdmin"]) if "roomAdmin" in data else 0
+        self.karma = data["karmaLevel"]
 
     def __str__(self):
         return self.name
