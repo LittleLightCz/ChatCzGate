@@ -2,6 +2,8 @@ import logging
 import socketserver
 import sys
 
+import re
+
 from chatapi import ChatAPI, ChatEvent
 
 IRC_LISTEN_PORT = 32132  # TODO get from config file
@@ -29,11 +31,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
-        split_line = line.split(' ')  # TODO regex to handle ':' data containing spaces
-        command = split_line[0]
-        args = split_line[1:]  # TODO improve logic
-        log.debug("Parsed command %s args: %s " % (command, args))  # TODO debug only - unsafe, remove
-        self.handle_command(command, args)
+        match = re.match(r"(^\w+)\s+(.+)", line)
+        if match:
+            command, args = match.groups()
+            debug_args = re.sub(".","*",args) if command == "PASS" else args
+            log.debug("Parsed command %s args: %s " % (command, debug_args))
+            self.handle_command(command, args)
 
     def reply(self, response_number, message):
         """ Send response to client """
