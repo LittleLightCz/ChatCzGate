@@ -1,10 +1,10 @@
 import logging
 import re
-import schedule
 import threading
 import time
 
 import requests as req
+import schedule
 from bs4 import BeautifulSoup
 
 import js
