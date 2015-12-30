@@ -7,6 +7,8 @@ from chatapi import ChatAPI, ChatEvent
 IRC_LISTEN_PORT = 32132  # TODO get from config file
 UNICODE_SPACE = u'\xa0'
 
+VERSION = "0.1"
+
 log = logging.getLogger("chat")
 
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
@@ -106,9 +108,15 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """ Allows multiple clients """
     pass
 
+"""
+Main launch script
+"""
+
 t = ThreadedTCPServer(('localhost', IRC_LISTEN_PORT), IRCServer)  # TODO hostname from config
 
 try:
+    log.info("*** ChatCzGate version {0} ***".format(VERSION))
+    log.info("Listening on port: {0}".format(IRC_LISTEN_PORT))
     t.serve_forever()
 except KeyboardInterrupt:
     sys.exit(0)
