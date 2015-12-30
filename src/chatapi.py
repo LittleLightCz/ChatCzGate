@@ -1,4 +1,4 @@
-import logging as log
+import logging
 import requests as req
 import re, schedule
 import threading
@@ -27,19 +27,22 @@ USERS_CHECK_INTERVAL = 50
 LOGGER_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
 
 #Init logger
-log.basicConfig(level=log.DEBUG,
+logging.basicConfig(level=logging.DEBUG,
                 format=LOGGER_FORMAT,
                 filename='log.txt',
                 filemode='a')
 # define a Handler which writes INFO messages or higher to the sys.stderr
-console = log.StreamHandler()
-console.setLevel(log.DEBUG)
+console = logging.StreamHandler()
+console.setLevel(logging.DEBUG)
 # set a format which is simpler for console use
-formatter = log.Formatter(LOGGER_FORMAT)
+formatter = logging.Formatter(LOGGER_FORMAT)
 # tell the handler to use this format
 console.setFormatter(formatter)
 # add the handler to the root logger
-log.getLogger('').addHandler(console)
+
+log = logging.getLogger('chat')
+
+log.addHandler(console)
 
 #-------------------------------------------------------------------------------
 

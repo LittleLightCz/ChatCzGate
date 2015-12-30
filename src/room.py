@@ -1,6 +1,7 @@
-import logging as log
+import logging
 from enum import Enum
 
+log = logging.getLogger('chat')
 
 class Room:
     """
