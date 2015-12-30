@@ -1,8 +1,7 @@
 import logging
+import re
 import socketserver
 import sys
-
-import re
 
 from chatapi import ChatAPI, ChatEvent
 from error import LoginError
@@ -13,6 +12,7 @@ UNICODE_SPACE = u'\xa0'
 VERSION = "0.1"
 
 log = logging.getLogger("chat")
+
 
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
@@ -34,14 +34,14 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         match = re.match(r"(^\w+)\s+(.+)", line)
         if match:
             command, args = match.groups()
-            debug_args = re.sub(".","*",args) if command == "PASS" else args
+            debug_args = re.sub(".", "*", args) if command == "PASS" else args
             log.debug("Parsed command %s args: %s " % (command, debug_args))
             self.handle_command(command, args)
 
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
-        response = ":%s %d %s %s%s" % ('localhost', response_number, self.nickname, message, self.line_separator)
+        response = ":%s %d %s %s%s" % ('localhost', response_number, self.nickname, message, "\r\n")
         log.debug("Sending: %s" % response)
         self.request.send(str.encode(response))
 
@@ -51,8 +51,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def handle_command(self, command, args):
         """ IRC command handlers """
         def user_handler():
-            # Omit
-            pass
+            arguments = args.split(' ')
+            if len(arguments) == 4:
+                self.reply(1, "Welcome to ChatCzGate!")
+                self.reply(376, ":End of /MOTD command")
+            else:
+                self.not_enough_arguments_reply(command)
 
         def nick_handler():
             self.nickname = args
@@ -89,6 +93,22 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             else:
                 self.not_enough_arguments_reply(command)
 
+        def join_handler():
+            rooms = args[0].split(',')
+            rooms_available = self.chatapi.get_room_list()
+            keys = args[1].split(',')  # TODO locked rooms
+
+            for room in rooms:
+                r = next((x for x in rooms_available if x.name == room), None)
+                if r:
+                    log.info("Joining room : %s", r.name)
+                    self.chatapi.join(r)
+                    # TODO RPL_NOTOPIC
+                    self.reply(332, "%s :%s" % (r.name, 'TODO TOPIC'))
+                else:
+                    log.info("Failed to join : %s", room)
+                    pass  # TODO room not found
+
         def quit_handler():
             self.chatapi.logout()
 
@@ -98,6 +118,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             "NICK": nick_handler,
             "PASS": pass_handler,
             "LIST": list_handler,
+            "JOIN": join_handler,
             "QUIT": quit_handler,
         }
 
@@ -109,13 +130,13 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             log.error("IRC command not found: %s", command)
 
     def new_message(self, room, user, text, whisper):
-        super().new_message(room, user, text, whisper) # Todo
+        super().new_message(room, user, text, whisper)  # Todo
 
     def user_joined(self, room, user):
-        super().user_joined(room, user) # Todo
+        super().user_joined(room, user)  # Todo
 
     def user_left(self, room, user):
-        super().user_left(room, user) # Todo
+        super().user_left(room, user)  # Todo
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

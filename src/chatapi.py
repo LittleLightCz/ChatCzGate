@@ -1,9 +1,10 @@
 import logging
-import requests as req
-import re, schedule
+import re
+import schedule
 import threading
-
 import time
+
+import requests as req
 from bs4 import BeautifulSoup
 
 import js
@@ -200,7 +201,7 @@ class ChatAPI:
             users_count = len(div.div.find_all("span"))
             return Room(name, description, users_count)
 
-        divs = html.find_all("div","row row-xs-height list-group")
+        divs = html.find_all("div", "row row-xs-height list-group")
         rooms = [to_room(div) for div in divs]
         rooms.sort(key=lambda r: r.name)
 
@@ -218,7 +219,7 @@ class ChatAPI:
         """
         data = {"email": user, "password": password}
 
-        log.info("Logging as: {0}, password {1}".format(user, re.sub(".","*",password)))
+        log.info("Logging as: {0}, password {1}".format(user, re.sub(".", "*", password)))
         resp = req.post(LOGIN_URL, headers=self._headers, data=data, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
@@ -294,7 +295,7 @@ class ChatAPI:
         :param room: Room
         """
         log.info("Entering the room: "+room.name)
-        resp = req.get(CHAT_CZ_URL +"/" + room.name, headers=self._headers, cookies=self._cookies)
+        resp = req.get(CHAT_CZ_URL + "/" + room.name, headers=self._headers, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
         with room.lock:
