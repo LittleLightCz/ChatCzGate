@@ -2,20 +2,20 @@ import logging as log
 import socketserver
 import sys
 
-from chatapi import ChatAPI
+from chatapi import ChatAPI, ChatEvent
 
 IRC_LISTEN_PORT = 32132  # TODO get from config file
 UNICODE_SPACE = u'\xa0'
 
 
-class IRCServer(socketserver.StreamRequestHandler):
+class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
 
     line_separator = '\r\n'  # TODO regex
 
     def __init__(self, request, client_address, server):
         super().__init__(request, client_address, server)
-        self.chatapi = ChatAPI()
+        self.chatapi = ChatAPI(self)
         self.nickname = ''
 
     def handle(self):
@@ -92,6 +92,15 @@ class IRCServer(socketserver.StreamRequestHandler):
             commands[command]()
         except KeyError:
             log.error("IRC command not found: %s", command)
+
+    def new_message(self, room, user, text, whisper):
+        super().new_message(room, user, text, whisper) # Todo
+
+    def user_joined(self, room, user):
+        super().user_joined(room, user) # Todo
+
+    def user_left(self, room, user):
+        super().user_left(room, user) # Todo
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
