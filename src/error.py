@@ -10,3 +10,6 @@ class LogoutError(Exception):
 class RoomError(Exception):
     """Error during room operations"""
 
+class MessageError(Exception):
+    """Error during sending a message"""
+

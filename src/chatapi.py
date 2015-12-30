@@ -292,18 +292,33 @@ class ChatAPI:
         :param to_user: string
             Username to whisper to. Leave as None when talking to all.
         """
+        if to_user:
+            # Whispering
+            text = "/w "+to_user+" "+text
+
+        # Find our stored room in the list, or leave it as is
+        room = next((r for r in self._room_list if r.id == room.id), room)
+
+        # Create data
         data = {
             "roomId": room.id,
-            "chatIndex": "14|4",
+            "chatIndex": room.chat_index,
             "text": text,
             "userIdTo": "0"
         }
 
-        #Here check for user's ID and update userIdTo
-        #...... TODO
-
         log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
         resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
         self._cookies.update(resp.cookies)
+
+        # Server JSON response
+        json_data = resp.json()
+
+        if room.chat_index == json_data["data"]["index"]:
+            # Room's chat_index should be always different!
+            raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
+        else:
+            # Update room's chat_index
+            room.chat_index = json_data["data"]["index"]
 
 
