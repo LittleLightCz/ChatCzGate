@@ -5,6 +5,7 @@ import sys
 import re
 
 from chatapi import ChatAPI, ChatEvent
+from error import LoginError
 
 IRC_LISTEN_PORT = 32132  # TODO get from config file
 UNICODE_SPACE = u'\xa0'
@@ -16,12 +17,11 @@ log = logging.getLogger("chat")
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
 
-    line_separator = '\r\n'  # TODO regex
-
     def __init__(self, request, client_address, server):
-        super().__init__(request, client_address, server)
         self.chatapi = ChatAPI(self)
-        self.nickname = ''
+        self.nickname = ""
+        self.password = None
+        super().__init__(request, client_address, server)
 
     def handle(self):
         """ Handles incoming message """
@@ -51,20 +51,26 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def handle_command(self, command, args):
         """ IRC command handlers """
         def user_handler():
-            if len(args) == 4:
-                self.nickname = args[0]  # TODO take nickname from USER or NICK ?
-                self.reply(1, "Welcome to ChatCzGate!")
-                self.reply(376, ":End of /MOTD command")
-            else:
-                self.not_enough_arguments_reply(command)
+            # Omit
+            pass
 
         def nick_handler():
-            self.nickname = args[0]
+            self.nickname = args
+
+            # When NICK is received, perform login
+            try:
+                if self.password:
+                    self.chatapi.login(self.nickname, self.password)
+                else:
+                    # Todo Solve male/female problem
+                    self.chatapi.login_as_anonymous(self.nickname)
+            except LoginError as e:
+                log.error(str(e))
+                # Todo: send wrong password reply
 
         def pass_handler():
-            # password = args[0][1:]
-            # TODO if password is set, use non-anonymous login
-            pass
+            if args:
+                self.password = args[1:] if args[0] == ":" else args
 
         def list_handler():
             available_channels = self.chatapi.get_room_list()
@@ -83,16 +89,21 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             else:
                 self.not_enough_arguments_reply(command)
 
+        def quit_handler():
+            self.chatapi.logout()
+
+        # Supported commands
         commands = {  # TODO other commands
-            # """ Supported commands -> handlers map """
             "USER": user_handler,
             "NICK": nick_handler,
             "PASS": pass_handler,
-            "LIST": list_handler
+            "LIST": list_handler,
+            "QUIT": quit_handler,
         }
 
         try:
             log.debug("requesting command : %s", command)
+            # Execute command handler
             commands[command]()
         except KeyError:
             log.error("IRC command not found: %s", command)
