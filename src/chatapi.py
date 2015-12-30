@@ -94,7 +94,6 @@ class ChatAPI:
         :param event_handler: ChatEvent
         """
         self._event = event_handler
-        self._event_lock = threading.Lock()
 
         self.logged = False
 
@@ -155,7 +154,6 @@ class ChatAPI:
             user = room.get_user_by_id(msg["uid"])
             whisper = True if "w" in msg else False
             self._event.new_message(room, user, msg["t"], whisper)
-            pass
 
     def _messages_check(self):
         """
@@ -173,15 +171,16 @@ class ChatAPI:
             self._cookies.update(resp.cookies)
 
             json_data = resp.json()
-            if json_data['success']:
-                # Update chat index
-                room.chat_index = json_data['data']['index']
-                # Get messages
-                messages = json_data['data']['data']
-                for msg in messages:
-                    self._process_message(room, msg)
-            else:
-                log.error("Failed to get new messages: "+json_data['statusMessage'])
+            with room.lock:
+                if json_data['success']:
+                    # Update chat index
+                    room.chat_index = json_data['data']['index']
+                    # Get messages
+                    messages = json_data['data']['data']
+                    for msg in messages:
+                        self._process_message(room, msg)
+                else:
+                    log.error("Failed to get new messages: "+json_data['statusMessage'])
 
     def get_room_list(self):
         """
@@ -204,6 +203,24 @@ class ChatAPI:
         log.debug([r.name for r in rooms])
         return rooms
 
+    def login(self, user, password):
+        """
+        Logs in to the server as an anonymous user.
+
+        :param user: string
+            Username or email
+        :param password: string
+            Password
+        """
+        data = {"email": user, "password": password}
+
+        log.info("Logging as: {0}, password {1}".format(user, re.sub(".","*",password)))
+        resp = req.post(LOGIN_URL, headers=self._headers, data=data, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
+
+        # Check whether the login was successful
+        self._login_check(resp)
+
     def login_as_anonymous(self, user, gender=Gender.MALE):
         """
         Logs in to the server as an anonymous user.
@@ -220,15 +237,19 @@ class ChatAPI:
         self._cookies.update(resp.cookies)
 
         # Check whether the login was successful
+        self._login_check(resp)
+
+    def _login_check(self, resp):
         html = BeautifulSoup(resp.text, "html.parser")
         nav_user = html.find("li", {"id": "nav-user"})
         alert = html.find("div", {"class": "alert"})
 
         self.logged = False
+
         if nav_user:
             self.logged = True
         elif alert:
-            match = re.search(r"\n.+?\n.*$",alert.text)
+            match = re.search(r"\n.+?\n.*$", alert.text)
             raise LoginError(match.group().strip())
         else:
             raise LoginError("Failed to login for unknown reason.")
@@ -264,20 +285,21 @@ class ChatAPI:
         resp = req.get(CHAT_CZ_URL +"/" + room.name, headers=self._headers, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
-        id_match = re.search(r"/leaveRoom/(\d+)", resp.text)
-        if id_match:
-            room.id = id_match.group(1)
-            log.info("Room ID is: "+room.id)
-        else:
-            raise RoomError("Failed to get room ID!")
+        with room.lock:
+            id_match = re.search(r"/leaveRoom/(\d+)", resp.text)
+            if id_match:
+                room.id = id_match.group(1)
+                log.info("Room ID is: "+room.id)
+            else:
+                raise RoomError("Failed to get room ID!")
 
-        # Get users in the room
-        match = re.search(r"var userList\s*=\s*({[\s\S]+?});", resp.text)
-        if match:
-            data = js.to_py_json(match.group(1))["data"]
-            room.user_list = [User(val) for key,val in data.items()]
-        else:
-            raise RoomError("Failed to get user list for the room: "+room)
+            # Get users in the room
+            match = re.search(r"var userList\s*=\s*({[\s\S]+?});", resp.text)
+            if match:
+                data = js.to_py_json(match.group(1))["data"]
+                room.user_list = [User(val) for key,val in data.items()]
+            else:
+                raise RoomError("Failed to get user list for the room: "+room)
 
         # Add room to the list
         self._room_list.append(room)
@@ -317,11 +339,12 @@ class ChatAPI:
         # Server JSON response
         json_data = resp.json()
 
-        if room.chat_index == json_data["data"]["index"]:
-            # Room's chat_index should be always different!
-            raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
-        else:
-            # Update room's chat_index
-            room.chat_index = json_data["data"]["index"]
+        with room.lock:
+            if room.chat_index == json_data["data"]["index"]:
+                # Room's chat_index should be always different!
+                raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
+            else:
+                # Update room's chat_index
+                room.chat_index = json_data["data"]["index"]
 
 

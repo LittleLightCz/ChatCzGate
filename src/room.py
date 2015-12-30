@@ -1,5 +1,6 @@
 import logging
 from enum import Enum
+from threading import Lock
 
 log = logging.getLogger('chat')
 
@@ -15,6 +16,8 @@ class Room:
         self.users_count = users_count
         self.user_list = []
         self.chat_index = ""
+
+        self.lock = Lock()
 
     def __str__(self):
         return self.name
