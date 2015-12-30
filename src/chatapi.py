@@ -13,6 +13,7 @@ from room import Room, User, Gender
 CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
 LOGOUT_URL = CHAT_CZ_URL + "/logout"
+LEAVE_ROOM_URL = CHAT_CZ_URL + "/leaveRoom/"
 
 JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
 JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
@@ -107,6 +108,7 @@ class ChatAPI:
 
         # Set up internal room list
         self._room_list = []
+        self._room_list_lock = threading.Lock()
 
         # Set up schedule
         self._scheduler_jobs = []
@@ -127,9 +129,10 @@ class ChatAPI:
         resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
 
         # Get room's user info
-        for room in self._room_list:
-            data = {"roomId": room.id}
-            resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
+        with self._room_list_lock:
+            for room in self._room_list:
+                data = {"roomId": room.id}
+                resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
 
 
     def _process_message(self, room, msg):
@@ -160,27 +163,28 @@ class ChatAPI:
         Checks for new messages and triggers appropriate event
         :param room: Room
         """
-        for room in self._room_list:
-            data = {
-                "roomId": room.id,
-                "chatIndex": room.chat_index,
-            }
+        with self._room_list_lock:
+            for room in self._room_list:
+                data = {
+                    "roomId": room.id,
+                    "chatIndex": room.chat_index,
+                }
 
-            log.debug("Checking for new messages in: "+room.name)
-            resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
-            self._cookies.update(resp.cookies)
+                log.debug("Checking for new messages in: "+room.name)
+                resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
+                self._cookies.update(resp.cookies)
 
-            json_data = resp.json()
-            with room.lock:
-                if json_data['success']:
-                    # Update chat index
-                    room.chat_index = json_data['data']['index']
-                    # Get messages
-                    messages = json_data['data']['data']
-                    for msg in messages:
-                        self._process_message(room, msg)
-                else:
-                    log.error("Failed to get new messages: "+json_data['statusMessage'])
+                json_data = resp.json()
+                with room.lock:
+                    if json_data['success']:
+                        # Update chat index
+                        room.chat_index = json_data['data']['index']
+                        # Get messages
+                        messages = json_data['data']['data']
+                        for msg in messages:
+                            self._process_message(room, msg)
+                    else:
+                        log.error("Failed to get new messages: "+json_data['statusMessage'])
 
     def get_room_list(self):
         """
@@ -241,12 +245,11 @@ class ChatAPI:
 
     def _login_check(self, resp):
         html = BeautifulSoup(resp.text, "html.parser")
-        nav_user = html.find("li", {"id": "nav-user"})
         alert = html.find("div", {"class": "alert"})
 
         self.logged = False
 
-        if nav_user:
+        if self._is_logged_page(html):
             self.logged = True
         elif alert:
             match = re.search(r"\n.+?\n.*$", alert.text)
@@ -258,6 +261,15 @@ class ChatAPI:
 
         # Run schedule
         threading.Thread(target=self._run_schedule_continuously).start()
+
+    def _is_logged_page(self, html):
+        """
+        Checks whether provided html correspond with the main chat page with logged user.
+
+        :param html: BeautifulSoup Tag
+        :return: Searched <li> tag or None
+        """
+        return html.find("li", {"id": "nav-user"})
 
     def logout(self):
         """
@@ -281,7 +293,7 @@ class ChatAPI:
         Enters the room
         :param room: Room
         """
-        log.info("Entering ther room: "+room.name)
+        log.info("Entering the room: "+room.name)
         resp = req.get(CHAT_CZ_URL +"/" + room.name, headers=self._headers, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
@@ -302,10 +314,29 @@ class ChatAPI:
                 raise RoomError("Failed to get user list for the room: "+room)
 
         # Add room to the list
-        self._room_list.append(room)
+        with self._room_list_lock:
+            self._room_list.append(room)
 
         # Trigger users check
         self._users_check()
+
+    def part(self, room):
+        """
+        Leaves the room
+        :param room: Room
+        """
+        log.info("Leaving the room: "+room.name)
+        resp = req.get(LEAVE_ROOM_URL + room.id, headers=self._headers, cookies=self._cookies)
+        self._cookies.update(resp.cookies)
+
+        html = BeautifulSoup(resp.text, "html.parser")
+        with self._room_list_lock:
+            if self._is_logged_page(html):
+                # Remove room from the list
+                self._room_list = [r for r in self._room_list if r.id != room.id]
+            else:
+                raise RoomError("Failed to leave the room: "+room.name)
+
 
     def say(self, room, text, to_user=None):
         """
@@ -322,7 +353,8 @@ class ChatAPI:
             text = "/w "+to_user+" "+text
 
         # Find our stored room in the list, or leave it as is
-        room = next((r for r in self._room_list if r.id == room.id), room)
+        with self._room_list_lock:
+            room = next((r for r in self._room_list if r.id == room.id), room)
 
         # Create data
         data = {
