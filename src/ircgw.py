@@ -1,4 +1,4 @@
-import logging as log
+import logging
 import socketserver
 import sys
 
@@ -7,6 +7,7 @@ from chatapi import ChatAPI, ChatEvent
 IRC_LISTEN_PORT = 32132  # TODO get from config file
 UNICODE_SPACE = u'\xa0'
 
+log = logging.getLogger("chat")
 
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
@@ -20,11 +21,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def handle(self):
         """ Handles incoming message """
+        socket_file = self.request.makefile("r")
         while True:
-            data = self.request.recv(512).decode('utf-8')  # TODO readline ?
-            lines = data.split(self.line_separator)
-            for line in lines[:-1]:
-                self.parse_line(line)
+            self.parse_line(socket_file.readline())
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
