@@ -9,6 +9,7 @@ from error import LoginError
 LINE_BREAK = "\r\n"
 ENCODING = "UTF-8"
 
+IRC_HOSTNAME = 'localhost'
 IRC_LISTEN_PORT = 32132  # TODO get from config file
 UNICODE_SPACE = u'\xa0'
 
@@ -22,14 +23,16 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def __init__(self, request, client_address, server):
         self.chatapi = ChatAPI(self)
-        self.nickname = ""
+        self.nickname = None
+        self.username = None
         self.password = None
+        self.hostname = IRC_HOSTNAME
         super().__init__(request, client_address, server)
 
     def handle(self):
         """ Handles incoming message """
         socket_file = self.request.makefile(mode="r", encoding=ENCODING)
-        while True:
+        while True:  # TODO exit
             self.parse_line(socket_file.readline())
 
     def parse_line(self, line):
@@ -44,7 +47,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
-        response = ":%s %03d %s %s%s" % ('localhost', response_number, self.nickname, message, LINE_BREAK)
+        response = ":%s %03d %s %s%s" % (self.hostname, response_number, self.username, message, LINE_BREAK)
         log.debug("Sending: %s" % response)
         self.request.send(str.encode(response, encoding=ENCODING))
 
@@ -55,19 +58,22 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply(372, ":- "+text)
 
     def send_welcome_message(self):
-        self.reply(1, ":")
+        self.reply(1, ":Welcome to the Internet Relay Network %s!%s@%s" % (self.nickname, self.username, self.hostname))
+        self.reply(2, ":Your host is %s, running version %s" % (self.hostname, VERSION))
+        self.reply(3, ":")
+        self.reply(4, ":")
         self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
         self.send_MOTD_text("With great power comes great responsibility ...")
 
-        self.reply(376, self.nickname + " :End of MOTD command.");
+        self.reply(376, self.nickname or self.username + " :End of MOTD command.")
 
     def handle_command(self, command, args):
         """ IRC command handlers """
         def user_handler():
             arguments = args.split(' ')
             if len(arguments) == 4:
-                self.reply(1, "Welcome to ChatCzGate!")
-                self.reply(376, ":End of /MOTD command")
+                self.username = arguments[0]
+                self.send_welcome_message()
             else:
                 self.not_enough_arguments_reply(command)
 
@@ -94,17 +100,17 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         def list_handler():
             arguments = args.split(' ')
             available_channels = self.chatapi.get_room_list()
-            if len(arguments) > 1:  # ask another server
-                pass
-            else:
-                if len(arguments) == 1: # expecting comma separated channels, return their topics
-                    channels = arguments[0].split(',')
-                    available_channels = [ch for ch in available_channels if ch.name in channels]
 
-                self.reply(321, "Channel :Users  Name")
-                for channel in available_channels:
-                    self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', UNICODE_SPACE), channel.users_count, channel.description))
-                self.reply(323, ":End of /LIST")
+            if len(arguments) == 2:  # TODO ask another server
+                available_channels = []
+            elif len(arguments) == 1:  # expecting comma separated channels, return their topics
+                channels = arguments[0].split(',')
+                available_channels = [ch for ch in available_channels if ch.name in channels]
+
+            self.reply(321, "Channel :Users  Name")
+            for channel in available_channels:
+                self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', UNICODE_SPACE), channel.users_count, channel.description))
+            self.reply(323, ":End of /LIST")
 
         def join_handler():
             arguments = args.split(' ')
@@ -125,7 +131,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             self.chatapi.logout()
 
         def ping_handler():
-            pass  # TODO
+            log.debug(args)
+            pong = "PONG %s :1 %s%s" % (args, self.hostname, LINE_BREAK)  # TODO check
+            self.request.send(str.encode(pong, encoding=ENCODING))
 
         # Supported commands
         commands = {  # TODO other commands
@@ -163,7 +171,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 Main launch script
 """
 
-t = ThreadedTCPServer(('localhost', IRC_LISTEN_PORT), IRCServer)  # TODO hostname from config
+t = ThreadedTCPServer((IRC_HOSTNAME, IRC_LISTEN_PORT), IRCServer)  # TODO hostname from config
 
 try:
     log.info("*** ChatCzGate version {0} ***".format(VERSION))
