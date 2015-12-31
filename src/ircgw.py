@@ -56,6 +56,15 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             log.debug("Parsed command %s args: %s " % (command, debug_args))
             self.handle_command(command, args)
 
+    def get_nick(self):
+        return self.nickname or self.username
+
+    def reply_privmsg(self, sender, to, text):
+        """ Send PROVMSG response to client """
+        response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, LINE_BREAK)
+        log.debug("Sending: %s" % response)
+        self.request.send(str.encode(response, encoding=ENCODING))
+
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
@@ -78,7 +87,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
         # self.send_MOTD_text("With great power comes great responsibility ...")
 
-        self.reply(376, (self.nickname or self.username) + " :End of MOTD command.")
+        self.reply(376, self.get_nick() + " :End of MOTD command.")
 
     def handle_command(self, command, args):
         """ IRC command handlers """
@@ -174,7 +183,8 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             log.error("IRC command not found: %s", command)
 
     def new_message(self, room, user, text, whisper):
-        super().new_message(room, user, text, whisper)  # Todo
+        to = self.get_nick() if whisper else "#"+room.name
+        self.reply_privmsg(to_ws(user.name), to_ws(to), text)
 
     def user_joined(self, room, user):
         super().user_joined(room, user)  # Todo
