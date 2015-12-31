@@ -31,9 +31,11 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def handle(self):
         """ Handles incoming message """
-        socket_file = self.request.makefile(mode="r", encoding=ENCODING)
         while True:  # TODO exit
-            self.parse_line(socket_file.readline())
+            data = self.request.recv(512).decode('utf-8')  # TODO readline ?
+            lines = data.split(LINE_BREAK)
+            for line in lines[:-1]:
+                self.parse_line(line)
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
