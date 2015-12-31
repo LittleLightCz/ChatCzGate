@@ -49,7 +49,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
-        response = ":%s %03d %s %s%s" % (self.hostname, response_number, self.username, message, LINE_BREAK)
+        response = ":%s %03d %s %s %s" % (self.hostname, response_number, self.nickname, message, LINE_BREAK)
         log.debug("Sending: %s" % response)
         self.request.send(str.encode(response, encoding=ENCODING))
 
@@ -63,11 +63,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply(1, ":Welcome to the Internet Relay Network %s!%s@%s" % (self.nickname, self.username, self.hostname))
         self.reply(2, ":Your host is %s, running version %s" % (self.hostname, VERSION))
         self.reply(3, ":")
-        self.reply(4, ":")
+        self.reply(4, "")
+        self.reply(375, "Message of the day -")
         self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
         self.send_MOTD_text("With great power comes great responsibility ...")
 
-        self.reply(376, self.nickname or self.username + " :End of MOTD command.")
+        self.reply(376, (self.nickname or self.username) + " :End of MOTD command.")
 
     def handle_command(self, command, args):
         """ IRC command handlers """
@@ -124,7 +125,11 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     log.info("Joining room : %s", r.name)
                     self.chatapi.join(r)
                     # TODO RPL_NOTOPIC
-                    self.reply(332, "%s :%s" % (r.name, r.description))
+                    self.request.send(str.encode(":%s!%s@%s JOIN #%s" % (self.nickname, self.username, self.hostname, r.name), encoding=ENCODING))
+                    self.reply(332, "#%s :%s" % (r.name, r.description))
+                    users_in_room = ' '.join([x.name for x in r.user_list])
+                    self.reply(353, "= #%s :%s %s" % (r.name, self.nickname, users_in_room))
+                    self.reply(366, "#%s :End of /NAMES list." % r.name)
                 else:
                     log.info("Failed to join : %s", room)
                     # TODO room not found
