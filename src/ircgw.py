@@ -6,6 +6,8 @@ import sys
 from chatapi import ChatAPI, ChatEvent
 from error import LoginError
 
+ENCODING = "UTF-8"
+
 IRC_LISTEN_PORT = 32132  # TODO get from config file
 UNICODE_SPACE = u'\xa0'
 
@@ -25,7 +27,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def handle(self):
         """ Handles incoming message """
-        socket_file = self.request.makefile("r")
+        socket_file = self.request.makefile(mode="r", encoding=ENCODING)
         while True:
             self.parse_line(socket_file.readline())
 
@@ -79,20 +81,17 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         def list_handler():
             arguments = args.split(' ')
             available_channels = self.chatapi.get_room_list()
-            if len(arguments) == 2:  # ask another server
+            if len(arguments) > 1:  # ask another server
                 pass
-            elif len(arguments) == 1:  # expecting comma separated channels, return their topics
-                channels = arguments[0].split(',')
-                for channel in channels:
-                    if channel in available_channels:
-                        pass  # TODO
-            elif len(arguments) == 0:  # return all rooms
+            else:
+                if len(arguments) == 1: # expecting comma separated channels, return their topics
+                    channels = arguments[0].split(',')
+                    available_channels = [ch for ch in available_channels if ch.name in channels]
+
                 self.reply(321, "Channel :Users  Name")
                 for channel in available_channels:
                     self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', UNICODE_SPACE), channel.users_count, channel.description))
                 self.reply(323, ":End of /LIST")
-            else:
-                self.not_enough_arguments_reply(command)
 
         def join_handler():
             arguments = args.split(' ')
