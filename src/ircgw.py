@@ -59,6 +59,18 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def get_nick(self):
         return self.nickname or self.username
 
+    def reply_join(self, name, channel):
+        """ Send JOIN response to client """
+        response = ":%s JOIN %s %s" % (name, channel, LINE_BREAK)
+        log.debug("Sending: %s" % response)
+        self.request.send(str.encode(response, encoding=ENCODING))
+
+    def reply_part(self, name, channel):
+        """ Send PART response to client """
+        response = ":%s PART %s %s" % (name, channel, LINE_BREAK)
+        log.debug("Sending: %s" % response)
+        self.request.send(str.encode(response, encoding=ENCODING))
+
     def reply_privmsg(self, sender, to, text):
         """ Send PROVMSG response to client """
         response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, LINE_BREAK)
@@ -187,10 +199,10 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply_privmsg(to_ws(user.name), to_ws(to), text)
 
     def user_joined(self, room, user):
-        super().user_joined(room, user)  # Todo
+        self.reply_join(to_ws(user.name), to_ws("#"+room.name))
 
     def user_left(self, room, user):
-        super().user_left(room, user)  # Todo
+        self.reply_part(to_ws(user.name), to_ws("#"+room.name))
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
