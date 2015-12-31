@@ -35,12 +35,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             data = self.request.recv(512).decode('utf-8')  # TODO readline ?
             log.debug("RAW: %s" % data)
             lines = data.split(LINE_BREAK)
-            for line in lines[:-1]:
+            for line in lines:
                 self.parse_line(line)
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
-        match = re.match(r"(^\w+)\s+(.+)", line)
+        match = re.match(r"(^\w+)\s*(.*)", line)
         if match:
             command, args = match.groups()
             debug_args = re.sub(".", "*", args) if command == "PASS" else args
@@ -67,7 +67,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply(4, "")
         self.reply(375, "Message of the day -")
         self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
-        self.send_MOTD_text("With great power comes great responsibility ...")
+        # self.send_MOTD_text("With great power comes great responsibility ...")
 
         self.reply(376, (self.nickname or self.username) + " :End of MOTD command.")
 
@@ -112,6 +112,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 available_channels = [ch for ch in available_channels if ch.name in channels]
 
             self.reply(321, "Channel :Users  Name")
+
             for channel in available_channels:
                 self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', UNICODE_SPACE), channel.users_count, channel.description))
             self.reply(323, ":End of /LIST")
