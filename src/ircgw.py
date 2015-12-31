@@ -17,6 +17,13 @@ VERSION = "0.1"
 
 log = logging.getLogger("chat")
 
+def to_ws(text):
+    """Convenience function for converting spaces into unicode whitespaces"""
+    return text.replace(' ', UNICODE_SPACE)
+
+def from_ws(text):
+    """Convenience function for converting unicode whitespaces into spaces"""
+    return text.replace(UNICODE_SPACE, ' ')
 
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
@@ -116,7 +123,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             self.reply(321, "Channel :Users  Name")
 
             for channel in available_channels:
-                self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', UNICODE_SPACE), channel.users_count, channel.description))
+                self.reply(322, "#%s %d :%s" % (to_ws(channel.name), channel.users_count, channel.description))
             self.reply(323, ":End of /LIST")
 
         def join_handler():
