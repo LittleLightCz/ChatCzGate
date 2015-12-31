@@ -187,6 +187,14 @@ class ChatAPI:
                     else:
                         log.error("Failed to get new messages: "+json_data['statusMessage'])
 
+    def get_room_by_name(self, name):
+        """
+        Returns room instance by name
+        :param name: string
+        :return: Room instance
+        """
+        return next((r for r in self.get_room_list() if r.name == name), None)
+
     def get_room_list(self):
         """
         Returns the list of all rooms on the server sorted by name. Data are held in the class Room.

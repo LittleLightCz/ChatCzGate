@@ -97,10 +97,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         def join_handler():
             arguments = args.split(' ')
             rooms = arguments[0].split(',')
-            rooms_available = self.chatapi.get_room_list()
             keys = arguments[1].split(',')  # TODO locked rooms
             for room in rooms:
-                r = next((x for x in rooms_available if x.name == room), None)
+                r = self.chatapi.get_room_by_name(room)
                 if r:
                     log.info("Joining room : %s", r.name)
                     self.chatapi.join(r)
