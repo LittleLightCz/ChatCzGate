@@ -33,6 +33,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         """ Handles incoming message """
         while True:  # TODO exit
             data = self.request.recv(512).decode('utf-8')  # TODO readline ?
+            log.debug("RAW: %s" % data)
             lines = data.split(LINE_BREAK)
             for line in lines[:-1]:
                 self.parse_line(line)
@@ -76,7 +77,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             arguments = args.split(' ')
             if len(arguments) == 4:
                 self.username = arguments[0]
-                self.send_welcome_message()
+                #self.send_welcome_message()
             else:
                 self.not_enough_arguments_reply(command)
 
@@ -125,7 +126,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     log.info("Joining room : %s", r.name)
                     self.chatapi.join(r)
                     # TODO RPL_NOTOPIC
-                    self.request.send(str.encode(":%s!%s@%s JOIN #%s" % (self.nickname, self.username, self.hostname, r.name), encoding=ENCODING))
+                    self.request.send(str.encode(":%s!%s@%s JOIN #%s%s" % (self.nickname, self.username, self.hostname, r.name, LINE_BREAK ), encoding=ENCODING))
                     self.reply(332, "#%s :%s" % (r.name, r.description))
                     users_in_room = ' '.join([x.name for x in r.user_list])
                     self.reply(353, "= #%s :%s %s" % (r.name, self.nickname, users_in_room))
