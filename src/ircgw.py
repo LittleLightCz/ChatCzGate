@@ -77,15 +77,16 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 self.password = args[1:] if args[0] == ":" else args
 
         def list_handler():
+            arguments = args.split(' ')
             available_channels = self.chatapi.get_room_list()
-            if len(args) == 2:  # ask another server
+            if len(arguments) == 2:  # ask another server
                 pass
-            elif len(args) == 1:  # expecting comma separated channels, return their topics
-                channels = args[0].split(',')
+            elif len(arguments) == 1:  # expecting comma separated channels, return their topics
+                channels = arguments[0].split(',')
                 for channel in channels:
                     if channel in available_channels:
                         pass  # TODO
-            elif len(args) == 0:  # return all rooms
+            elif len(arguments) == 0:  # return all rooms
                 self.reply(321, "Channel :Users  Name")
                 for channel in available_channels:
                     self.reply(322, "#%s %d :%s" % (channel.name.replace(' ', UNICODE_SPACE), channel.users_count, channel.description))
@@ -94,23 +95,26 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 self.not_enough_arguments_reply(command)
 
         def join_handler():
-            rooms = args[0].split(',')
+            arguments = args.split(' ')
+            rooms = arguments[0].split(',')
             rooms_available = self.chatapi.get_room_list()
-            keys = args[1].split(',')  # TODO locked rooms
-
+            keys = arguments[1].split(',')  # TODO locked rooms
             for room in rooms:
                 r = next((x for x in rooms_available if x.name == room), None)
                 if r:
                     log.info("Joining room : %s", r.name)
                     self.chatapi.join(r)
                     # TODO RPL_NOTOPIC
-                    self.reply(332, "%s :%s" % (r.name, 'TODO TOPIC'))
+                    self.reply(332, "%s :%s" % (r.name, r.description))
                 else:
                     log.info("Failed to join : %s", room)
-                    pass  # TODO room not found
+                    # TODO room not found
 
         def quit_handler():
             self.chatapi.logout()
+
+        def ping_handler():
+            pass  # TODO
 
         # Supported commands
         commands = {  # TODO other commands
@@ -120,6 +124,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             "LIST": list_handler,
             "JOIN": join_handler,
             "QUIT": quit_handler,
+            "PING": ping_handler
         }
 
         try:
