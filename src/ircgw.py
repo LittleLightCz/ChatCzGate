@@ -6,6 +6,7 @@ import sys
 from chatapi import ChatAPI, ChatEvent
 from error import LoginError
 
+LINE_BREAK = "\r\n"
 ENCODING = "UTF-8"
 
 IRC_LISTEN_PORT = 32132  # TODO get from config file
@@ -43,12 +44,22 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
-        response = ":%s %d %s %s%s" % ('localhost', response_number, self.nickname, message, "\r\n")
+        response = ":%s %03d %s %s%s" % ('localhost', response_number, self.nickname, message, LINE_BREAK)
         log.debug("Sending: %s" % response)
-        self.request.send(str.encode(response))
+        self.request.send(str.encode(response, encoding=ENCODING))
 
     def not_enough_arguments_reply(self, command_name):
         self.reply(461, "%s :Not enough parameters" % command_name)
+
+    def send_MOTD_text(self, text):
+        self.reply(372, ":- "+text)
+
+    def send_welcome_message(self):
+        self.reply(1, ":")
+        self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
+        self.send_MOTD_text("With great power comes great responsibility ...")
+
+        self.reply(376, self.nickname + " :End of MOTD command.");
 
     def handle_command(self, command, args):
         """ IRC command handlers """
@@ -70,6 +81,8 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 else:
                     # Todo Solve male/female problem
                     self.chatapi.login_as_anonymous(self.nickname)
+
+                self.send_welcome_message()
             except LoginError as e:
                 log.error(str(e))
                 # Todo: send wrong password reply
