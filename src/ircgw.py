@@ -40,9 +40,11 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
-        match = re.match(r"(^\w+)\s*(.*)", line)
+        match = re.match(r"(^\w+)\s*(.+)?", line)
         if match:
             command, args = match.groups()
+            args = args or ""
+
             debug_args = re.sub(".", "*", args) if command == "PASS" else args
             log.debug("Parsed command %s args: %s " % (command, debug_args))
             self.handle_command(command, args)
@@ -102,7 +104,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 self.password = args[1:] if args[0] == ":" else args
 
         def list_handler():
-            arguments = args.split(' ')
+            arguments = args.split(' ') if args else []
             available_channels = self.chatapi.get_room_list()
 
             if len(arguments) == 2:  # TODO ask another server
