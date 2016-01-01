@@ -2,6 +2,7 @@ import logging
 import re
 import socketserver
 import sys
+import traceback
 from threading import Lock
 
 from chatapi import ChatAPI, ChatEvent
@@ -52,6 +53,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     self.parse_line(line)
         except Exception as e:
             log.error(str(e))
+            traceback.print_exception(e)
             try:
                 if self.chatapi.logged:
                     log.info("We are still logged, doing logout ...")
@@ -202,11 +204,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     log.info("Joining room : %s", r.name)
                     self.chatapi.join(r)
                     # TODO RPL_NOTOPIC
-                    self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.nickname, self.username, self.hostname, r.name, LINE_BREAK))
-                    self.reply(332, "#%s :%s" % (r.name, r.description))
+                    room_name = to_ws(r.name)
+                    self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.nickname, self.username, self.hostname, room_name, LINE_BREAK))
+                    self.reply(332, "#%s :%s" % (room_name, r.description))
                     users_in_room = ' '.join([x.name for x in r.user_list])
-                    self.reply(353, "= #%s :%s %s" % (r.name, self.nickname, users_in_room))
-                    self.reply(366, "#%s :End of /NAMES list." % r.name)
+                    self.reply(353, "= #%s :%s %s" % (room_name, self.nickname, users_in_room))
+                    self.reply(366, "#%s :End of /NAMES list." % room_name)
                 else:
                     log.error("Couldn't find the room for name: ", room)
                     # TODO room not found
