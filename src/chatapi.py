@@ -358,6 +358,21 @@ class ChatAPI:
             else:
                 raise RoomError("Failed to leave the room: "+room.name)
 
+    def whisper(self, to_user, text):
+        """
+        Whispers to the user
+
+        :param to_user: string
+            Username to whisper to
+        :param text: string
+            Text to be told
+        """
+        with self._room_list_lock:
+            if len(self._room_list) > 0:
+                room = self._room_list[0]
+                self.say(room, text)
+            else:
+                raise MessageError("Failed to create a whisper message! There are no active rooms. Join the room first!")
 
     def say(self, room, text, to_user=None):
         """
