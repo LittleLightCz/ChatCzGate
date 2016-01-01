@@ -180,16 +180,24 @@ class ChatAPI:
                 self._cookies.update(resp.cookies)
 
                 json_data = resp.json()
-                with room.lock:
-                    if json_data['success']:
-                        # Update chat index
-                        room.chat_index = json_data['data']['index']
-                        # Get messages
-                        messages = json_data['data']['data']
-                        for msg in messages:
-                            self._process_message(room, msg)
-                    else:
-                        log.error("Failed to get new messages: "+json_data['statusMessage'])
+                self._process_room_messages_from_json(json_data, room)
+
+    def _process_room_messages_from_json(self, json_data, room):
+        """
+        Processes the new messages from JSON response for a specific room
+        :param json_data: JSON
+        :param room: Room
+        """
+        with room.lock:
+            if json_data['success']:
+                # Update chat index
+                room.chat_index = json_data['data']['index']
+                # Get messages
+                messages = json_data['data']['data']
+                for msg in messages:
+                    self._process_message(room, msg)
+            else:
+                log.error("Failed to get new messages: " + json_data['statusMessage'])
 
     def get_room_by_name(self, name):
         """
@@ -406,12 +414,11 @@ class ChatAPI:
         # Server JSON response
         json_data = resp.json()
 
-        with room.lock:
-            if room.chat_index == json_data["data"]["index"]:
-                # Room's chat_index should be always different!
-                raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
-            else:
-                # Update room's chat_index
-                room.chat_index = json_data["data"]["index"]
+        if room.chat_index == json_data["data"]["index"]:
+            # Room's chat_index should be always different!
+            raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
+        else:
+            # Process new messages, if any from the response
+            self._process_room_messages_from_json(json_data, room)
 
 

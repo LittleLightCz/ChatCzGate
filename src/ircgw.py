@@ -291,8 +291,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             log.exception("Error during command handling!")
 
     def new_message(self, room, user, text, whisper):
-        to = self.get_nick() if whisper else "#"+room.name
-        self.reply_privmsg(to_ws(user.name), to_ws(to), text)
+        if user.name != self.get_nick():
+            to = self.get_nick() if whisper else "#"+room.name
+            self.reply_privmsg(to_ws(user.name), to_ws(to), text)
 
     def user_joined(self, room, user):
         if user.name != self.get_nick():
