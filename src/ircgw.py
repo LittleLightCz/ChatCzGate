@@ -223,14 +223,13 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             self.reply(315, ":End of WHO list")
 
         def privmsg_handler():
-            match = re.match("(\S+)\s+(.*)", args)
+            match = re.match(r"(.+?)\s*:(.*)", args)
             target, msg = match.groups()
-
-            msg = msg[1:]
-
+            target = from_ws(target)
             try:
                 if target[0] == '#':  # send to channel
-                    self.chatapi.say(self.chatapi.get_active_room_by_name(target[1:]), msg)
+                    room = self.chatapi.get_active_room_by_name(target[1:])
+                    self.chatapi.say(room, msg)
                 else:  # whisper
                     self.chatapi.whisper(target, msg)
             except MessageError as e:
