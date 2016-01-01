@@ -224,12 +224,15 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
         def privmsg_handler():
             match = re.match("(\S+)\s+(.*)", args)
-            target_room, msg = match.groups()
-            target_room = target_room[1:] if target_room[0] == '#' else target_room
+            target, msg = match.groups()
+
             msg = msg[1:]
 
             try:
-                self.chatapi.say(self.chatapi.get_active_room_by_name(target_room), msg)
+                if target[0] == '#':  # send to channel
+                    self.chatapi.say(self.chatapi.get_active_room_by_name(target[1:]), msg)
+                else:  # whisper
+                    self.chatapi.whisper(target, msg)
             except MessageError as e:
                 self.reply_privmsg('ChatCzGate', self.get_nick(), e)
 

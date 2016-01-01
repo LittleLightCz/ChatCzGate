@@ -369,7 +369,7 @@ class ChatAPI:
         """
         if len(self._room_list) > 0:
             room = self._room_list[0]
-            self.say(room, text)
+            self.say(room, text, to_user)
         else:
             raise MessageError("Failed to create a whisper message! There are no active rooms. Join the room first!")
 
