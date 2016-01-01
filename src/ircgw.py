@@ -2,6 +2,7 @@ import logging
 import re
 import socketserver
 import sys
+from threading import Lock
 
 from chatapi import ChatAPI, ChatEvent
 from error import LoginError
@@ -34,6 +35,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.username = None
         self.password = None
         self.hostname = IRC_HOSTNAME
+        self._socket_lock = Lock()
         super().__init__(request, client_address, server)
 
     def handle(self):
@@ -59,30 +61,37 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def get_nick(self):
         return self.nickname or self.username
 
+    def socket_send(self, response):
+        """
+        The only method that should be used to send data through the socket
+
+        :param response: string
+            Message to be sent to the client
+        """
+        log.debug("Sending: %s" % re.sub(LINE_BREAK+"$","",response))
+        with self._socket_lock:
+            self.request.send(str.encode(response, encoding=ENCODING))
+
     def reply_join(self, name, channel):
         """ Send JOIN response to client """
         response = ":%s JOIN %s %s" % (name, channel, LINE_BREAK)
-        log.debug("Sending: %s" % response)
-        self.request.send(str.encode(response, encoding=ENCODING))
+        self.socket_send(response)
 
     def reply_part(self, name, channel):
         """ Send PART response to client """
         response = ":%s PART %s %s" % (name, channel, LINE_BREAK)
-        log.debug("Sending: %s" % response)
-        self.request.send(str.encode(response, encoding=ENCODING))
+        self.socket_send(response)
 
     def reply_privmsg(self, sender, to, text):
         """ Send PROVMSG response to client """
         response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, LINE_BREAK)
-        log.debug("Sending: %s" % response)
-        self.request.send(str.encode(response, encoding=ENCODING))
+        self.socket_send(response)
 
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
         response = ":%s %03d %s %s %s" % (self.hostname, response_number, self.nickname, message, LINE_BREAK)
-        log.debug("Sending: %s" % response)
-        self.request.send(str.encode(response, encoding=ENCODING))
+        self.socket_send(response)
 
     def not_enough_arguments_reply(self, command_name):
         self.reply(461, "%s :Not enough parameters" % command_name)
@@ -97,8 +106,6 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply(4, "")
         self.reply(375, "Message of the day -")
         self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
-        # self.send_MOTD_text("With great power comes great responsibility ...")
-
         self.reply(376, self.get_nick() + " :End of MOTD command.")
 
     def handle_command(self, command, args):
@@ -107,7 +114,6 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             arguments = args.split(' ')
             if len(arguments) == 4:
                 self.username = arguments[0]
-                #self.send_welcome_message()
             else:
                 self.not_enough_arguments_reply(command)
 
@@ -153,13 +159,13 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             keys = arguments[1].split(',') if len(arguments) > 1 else []
             for room in rooms:
                 # Remove leading hash sign
-                room = re.sub(r"^#", "", room)
+                room = re.sub(r"^#", "", from_ws(room))
                 r = self.chatapi.get_room_by_name(room)
                 if r:
                     log.info("Joining room : %s", r.name)
                     self.chatapi.join(r)
                     # TODO RPL_NOTOPIC
-                    self.request.send(str.encode(":%s!%s@%s JOIN #%s%s" % (self.nickname, self.username, self.hostname, r.name, LINE_BREAK ), encoding=ENCODING))
+                    self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.nickname, self.username, self.hostname, r.name, LINE_BREAK))
                     self.reply(332, "#%s :%s" % (r.name, r.description))
                     users_in_room = ' '.join([x.name for x in r.user_list])
                     self.reply(353, "= #%s :%s %s" % (r.name, self.nickname, users_in_room))
@@ -174,7 +180,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         def ping_handler():
             log.debug(args)
             pong = "PONG %s :1 %s%s" % (args, self.hostname, LINE_BREAK)  # TODO check
-            self.request.send(str.encode(pong, encoding=ENCODING))
+            self.socket_send(pong)
 
         # Supported commands
         commands = {  # TODO other commands
