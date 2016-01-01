@@ -160,6 +160,8 @@ class ChatAPI:
                 # Ignore messages from users that are not in the room?
                 whisper = True if "w" in msg else False
                 self._event.new_message(room, user, msg["t"], whisper)
+            else:
+                log.warning("Unkown UID: "+msg["uid"]+" -> "+msg["t"])
 
     def _messages_check(self):
         """

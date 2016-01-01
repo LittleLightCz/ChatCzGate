@@ -43,12 +43,21 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def handle(self):
         """ Handles incoming message """
-        while True:  # TODO exit
-            data = self.request.recv(512).decode('utf-8')  # TODO readline ?
-            log.debug("RAW: %s" % data)
-            lines = data.split(LINE_BREAK)
-            for line in lines:
-                self.parse_line(line)
+        try:
+            while True:  # TODO exit
+                data = self.request.recv(512).decode('utf-8')  # TODO readline ?
+                log.debug("RAW: %s" % data)
+                lines = data.split(LINE_BREAK)
+                for line in lines:
+                    self.parse_line(line)
+        except Exception as e:
+            log.error(str(e))
+            try:
+                if self.chatapi.logged:
+                    log.info("We are still logged, doing logout ...")
+                    self.chatapi.logout()
+            except Exception as e:
+                log.error(str(e))
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
@@ -237,8 +246,6 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             log.error("IRC command not found: %s", command)
 
     def new_message(self, room, user, text, whisper):
-        if not user or not room:
-            a = 1
         to = self.get_nick() if whisper else "#"+room.name
         self.reply_privmsg(to_ws(user.name), to_ws(to), text)
 
