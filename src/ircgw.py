@@ -109,6 +109,15 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.send_MOTD_text("With great power comes great responsibility ...")
         self.reply(376, self.get_nick() + " :End of MOTD command.")
 
+    def send_who_user_info(self, room, user):
+        nick = to_ws(user.name)
+        host = self.hostname
+        gender = str(user.gender)
+        op = "" # Admin SS DS ?
+        response = "#%s %s@%s unknown %s %s %s %s:0 %s %s" % \
+                   (to_ws(room.name), nick, host, host, nick, gender, op, nick, LINE_BREAK)
+        self.socket_send(response)
+
     def handle_command(self, command, args):
         """ IRC command handlers """
         def user_handler():
@@ -175,6 +184,15 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     log.info("Failed to join : %s", room)
                     # TODO room not found
 
+        def who_handler():
+            arguments = args.split(' ')
+            room_name = re.sub(r"^#", "", from_ws(arguments[0]))
+            room = self.chatapi.get_active_room_by_name(room_name)
+            for user in room.user_list:
+                self.send_who_user_info(room, user)
+
+            self.reply(315, ":End of WHO list")
+
         def privmsg_handler():
             arguments = args.split(' ')
             target_room = args[0][1:]
@@ -196,6 +214,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             "PASS": pass_handler,
             "LIST": list_handler,
             "JOIN": join_handler,
+            "WHO": who_handler,
             "QUIT": quit_handler,
             "PING": ping_handler,
             "PRIVMSG": privmsg_handler,

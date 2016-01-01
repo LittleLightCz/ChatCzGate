@@ -189,11 +189,19 @@ class ChatAPI:
 
     def get_room_by_name(self, name):
         """
-        Returns room instance by name
+        Downloads full room list from server and returns room instance by its name
         :param name: string
         :return: Room instance
         """
         return next((r for r in self.get_room_list() if r.name == name), None)
+
+    def get_active_room_by_name(self, name):
+        """
+        Returns room instance from internal _room_list by its name
+        :param name: string
+        :return: Room instance
+        """
+        return next((r for r in self._room_list if r.name == name), None)
 
     def get_room_list(self):
         """
