@@ -106,6 +106,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply(4, "")
         self.reply(375, "Message of the day -")
         self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
+        self.send_MOTD_text("With great power comes great responsibility ...")
         self.reply(376, self.get_nick() + " :End of MOTD command.")
 
     def handle_command(self, command, args):
@@ -174,6 +175,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     log.info("Failed to join : %s", room)
                     # TODO room not found
 
+        def privmsg_handler():
+            arguments = args.split(' ')
+            target_room = args[0][1:]
+            msg = args[1][1:]
+            self.chatapi.say(self.chatapi.get_room_by_name(target_room), msg)
+
         def quit_handler():
             self.chatapi.logout()
 
@@ -190,7 +197,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             "LIST": list_handler,
             "JOIN": join_handler,
             "QUIT": quit_handler,
-            "PING": ping_handler
+            "PING": ping_handler,
+            "PRIVMSG": privmsg_handler,
+
         }
 
         try:
