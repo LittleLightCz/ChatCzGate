@@ -195,8 +195,8 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
         def privmsg_handler():
             arguments = args.split(' ')
-            target_room = args[0][1:]
-            msg = args[1][1:]
+            target_room = arguments[0][1:]
+            msg = arguments[1][1:]
             self.chatapi.say(self.chatapi.get_room_by_name(target_room), msg)
 
         def quit_handler():
