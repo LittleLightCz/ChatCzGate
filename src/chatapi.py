@@ -161,7 +161,7 @@ class ChatAPI:
                 whisper = True if "w" in msg else False
                 self._event.new_message(room, user, msg["t"], whisper)
             else:
-                log.warning("Unkown UID: {0} -> {1}".format(msg["uid"], msg["t"]))
+                log.warning("Unknown UID: {0} -> {1}".format(msg["uid"], msg["t"]))
 
     def _messages_check(self):
         """
