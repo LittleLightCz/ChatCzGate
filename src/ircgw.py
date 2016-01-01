@@ -192,6 +192,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
         def join_handler():
             arguments = args.split(' ')
+            log.debug(" join debug ")
             rooms = arguments[0].split(',')
             keys = arguments[1].split(',') if len(arguments) > 1 else []
             for room in rooms:
@@ -240,6 +241,24 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             pong = "PONG %s :1 %s%s" % (args, self.hostname, LINE_BREAK)  # TODO check
             self.socket_send(pong)
 
+        def oper_handler():
+            pass  # TODO
+
+        def mode_handler():
+            pass  # TODO
+
+        def topic_handler():
+            pass  # TODO
+
+        def names_handler():
+            pass  # TODO
+
+        def invite_handler():
+            pass  # TODO
+
+        def kick_handler():
+            pass  # TODO
+
         # Supported commands
         commands = {  # TODO other commands
             "USER": user_handler,
@@ -252,7 +271,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             "QUIT": quit_handler,
             "PING": ping_handler,
             "PRIVMSG": privmsg_handler,
-
+            "OPER": oper_handler,
+            "MODE": mode_handler,
+            "TOPIC": topic_handler,
+            "NAMES": names_handler,
+            "INVITE": invite_handler,
+            "KICK": kick_handler,
         }
 
         try:
