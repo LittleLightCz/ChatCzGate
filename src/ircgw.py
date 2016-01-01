@@ -2,7 +2,6 @@ import logging
 import re
 import socketserver
 import sys
-import traceback
 from threading import Lock
 
 from chatapi import ChatAPI, ChatEvent
@@ -51,15 +50,14 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 lines = data.split(LINE_BREAK)
                 for line in lines:
                     self.parse_line(line)
-        except Exception as e:
-            log.error(str(e))
-            traceback.print_exception(e)
+        except Exception:
+            log.exception("Exception during socket reading!")
             try:
                 if self.chatapi.logged:
                     log.info("We are still logged, doing logout ...")
                     self.chatapi.logout()
-            except Exception as e:
-                log.error(str(e))
+            except Exception:
+                log.exception("Failed to logout!")
 
     def parse_line(self, line):
         """ Parse lines and call command handlers """
@@ -263,6 +261,8 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             commands[command]()
         except KeyError:
             log.error("IRC command not found: %s", command)
+        except Exception:
+            log.exception("Error during command handling!")
 
     def new_message(self, room, user, text, whisper):
         to = self.get_nick() if whisper else "#"+room.name
