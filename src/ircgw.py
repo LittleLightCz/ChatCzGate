@@ -6,6 +6,7 @@ from threading import Lock
 
 from chatapi import ChatAPI, ChatEvent
 from error import LoginError, MessageError
+from room import Gender
 
 LINE_BREAK = "\r\n"
 ENCODING = "UTF-8"
@@ -99,6 +100,11 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, LINE_BREAK)
         self.socket_send(response)
 
+    def reply_mode(self, channel, mode, nick):
+        """ Send MODE response to client """
+        response = ":%s MODE %s %s %s %s" % (self.hostname, channel, mode, nick, LINE_BREAK)
+        self.socket_send(response)
+
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
@@ -129,6 +135,15 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         response = "#%s %s@%s unknown %s %s %s %s:0 %s %s" % \
                    (to_ws(room.name), nick, host, host, nick, gender, op, nick, LINE_BREAK)
         self.socket_send(response)
+
+    def set_user_mode(self, user, room):
+        """Sets right MODE for specific user"""
+        nick = to_ws(user.name)
+        channel = to_ws("#" + room.name)
+
+        # Mark girl
+        if user.gender == Gender.FEMALE:
+            self.reply_mode(channel, "+v", nick)
 
     def handle_command(self, command, args):
         """ IRC command handlers """
@@ -222,6 +237,10 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
             self.reply(315, ":End of WHO list")
 
+            # Set user modes
+            for user in room.user_list:
+                self.set_user_mode(user, room)
+
         def privmsg_handler():
             match = re.match(r"(.+?)\s*:(.*)", args)
             target, msg = match.groups()
@@ -297,7 +316,8 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def user_joined(self, room, user):
         if user.name != self.get_nick():
-            self.reply_join(to_ws(user.name), to_ws("#"+room.name))
+            self.reply_join(to_ws(user.name), to_ws("#" + room.name))
+            self.set_user_mode(user, room)
 
     def user_left(self, room, user):
         if user.name != self.get_nick():
