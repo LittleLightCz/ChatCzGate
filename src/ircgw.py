@@ -229,14 +229,18 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             log.error("IRC command not found: %s", command)
 
     def new_message(self, room, user, text, whisper):
+        if not user or not room:
+            a = 1
         to = self.get_nick() if whisper else "#"+room.name
         self.reply_privmsg(to_ws(user.name), to_ws(to), text)
 
     def user_joined(self, room, user):
-        self.reply_join(to_ws(user.name), to_ws("#"+room.name))
+        if user.name != self.get_nick():
+            self.reply_join(to_ws(user.name), to_ws("#"+room.name))
 
     def user_left(self, room, user):
-        self.reply_part(to_ws(user.name), to_ws("#"+room.name))
+        if user.name != self.get_nick():
+            self.reply_part(to_ws(user.name), to_ws("#"+room.name))
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

@@ -156,8 +156,10 @@ class ChatAPI:
         else:
             # Standard chat message
             user = room.get_user_by_id(msg["uid"])
-            whisper = True if "w" in msg else False
-            self._event.new_message(room, user, msg["t"], whisper)
+            if user:
+                # Ignore messages from users that are not in the room?
+                whisper = True if "w" in msg else False
+                self._event.new_message(room, user, msg["t"], whisper)
 
     def _messages_check(self):
         """
