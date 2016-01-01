@@ -5,7 +5,7 @@ import sys
 from threading import Lock
 
 from chatapi import ChatAPI, ChatEvent
-from error import LoginError
+from error import LoginError, MessageError
 
 LINE_BREAK = "\r\n"
 ENCODING = "UTF-8"
@@ -18,13 +18,16 @@ VERSION = "0.1"
 
 log = logging.getLogger("chat")
 
+
 def to_ws(text):
     """Convenience function for converting spaces into unicode whitespaces"""
     return text.replace(' ', UNICODE_SPACE)
 
+
 def from_ws(text):
     """Convenience function for converting unicode whitespaces into spaces"""
     return text.replace(UNICODE_SPACE, ' ')
+
 
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
@@ -194,10 +197,15 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             self.reply(315, ":End of WHO list")
 
         def privmsg_handler():
-            arguments = args.split(' ')
-            target_room = arguments[0][1:]
-            msg = arguments[1][1:]
-            self.chatapi.say(self.chatapi.get_room_by_name(target_room), msg)
+            match = re.match("(\S+)\s+(.*)", args)
+            target_room, msg = match.groups()
+            target_room = target_room[1:] if target_room[0] == '#' else target_room
+            msg = msg[1:]
+
+            try:
+                self.chatapi.say(self.chatapi.get_active_room_by_name(target_room), msg)
+            except MessageError as e:
+                self.reply_privmsg('ChatCzGate', self.get_nick(), e)
 
         def quit_handler():
             self.chatapi.logout()
