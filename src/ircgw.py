@@ -124,7 +124,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def send_who_user_info(self, room, user):
         nick = to_ws(user.name)
         host = self.hostname
-        gender = str(user.gender)
+        gender = user.gender.value
         op = "" # Admin SS DS ?
         response = "#%s %s@%s unknown %s %s %s %s:0 %s %s" % \
                    (to_ws(room.name), nick, host, host, nick, gender, op, nick, LINE_BREAK)
@@ -175,6 +175,21 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 self.reply(322, "#%s %d :%s" % (to_ws(channel.name), channel.users_count, channel.description))
             self.reply(323, ":End of /LIST")
 
+        def part_handler():
+            arguments = args.split(' ')
+            rooms = arguments[0].split(',')
+            for room in rooms:
+                # Remove leading hash sign
+                room = re.sub(r"^#", "", from_ws(room))
+                r = self.chatapi.get_active_room_by_name(room)
+                if r:
+                    log.info("Leaving room : %s", r.name)
+                    self.chatapi.part(r)
+                    self.reply_part(self.get_nick(), "#"+to_ws(room))
+                else:
+                    log.error("Couldn't find the room for name: ", room)
+                    # TODO room not found
+
         def join_handler():
             arguments = args.split(' ')
             rooms = arguments[0].split(',')
@@ -193,7 +208,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     self.reply(353, "= #%s :%s %s" % (r.name, self.nickname, users_in_room))
                     self.reply(366, "#%s :End of /NAMES list." % r.name)
                 else:
-                    log.info("Failed to join : %s", room)
+                    log.error("Couldn't find the room for name: ", room)
                     # TODO room not found
 
         def who_handler():
@@ -231,6 +246,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             "PASS": pass_handler,
             "LIST": list_handler,
             "JOIN": join_handler,
+            "PART": part_handler,
             "WHO": who_handler,
             "QUIT": quit_handler,
             "PING": ping_handler,
