@@ -206,7 +206,7 @@ class ChatAPI:
                 if whisper:
                     # If to == 1, then ignore this whisper message because it comes from me
                     # and ignore all whisper messages from other rooms except the "first" one
-                    if msg["to"] == 0 and room != self._room_list[0]:
+                    if msg["to"] == 0 and room == self._room_list[0]:
                         self._event.new_message(room, user, msg["t"], whisper)
                 else:
                     self._event.new_message(room, user, msg["t"], whisper)
