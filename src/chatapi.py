@@ -88,7 +88,16 @@ class ChatEvent:
         :param room: Room
         :param message: string
         """
-        log.debug("<{0}> SYSTEM: {2}".format(room.name, message))
+        log.debug("<{0}> SYSTEM: {1}".format(room.name, message))
+
+    def user_mode(self, room, user, mode):
+        """
+        This method is called when there is new user mode change request
+        :param room: Room
+        :param user: User
+        :param mode: string
+        """
+        log.debug("<{0}> {1} => Mode {2}".format(room.name, user.name, mode))
 
 
 class ChatAPI:
@@ -153,27 +162,40 @@ class ChatAPI:
             if msg["s"] == "enter":
                 user = User(msg["user"])
                 room.add_user(user)
+                # Add user to DB
+                UserDb.add_user(user)
                 self._event.user_joined(room, user)
             elif msg["s"] in ["leave","auto_leave"]:
                 user = room.get_user_by_id(msg["uid"])
                 if user:
                     room.remove_user(user)
+                    # Add user to DB
+                    UserDb.add_user(user)
                     self._event.user_left(room, user)
             elif msg["s"] == "cli":
                 # Send system notice
                 self._event.system_message(room, msg["t"])
+            elif msg["s"] == "admin":
+                # Send mode OP
+                user = UserDb.get_user_by_name(msg["nick"])
+                self._event.user_mode(room, user, "+h")
+            elif msg["s"] == "friend":
+                # ?? just add him to DB :-)
+                UserDb.add_user_from_json(msg["user"])
             else:
                 log.warning("Unknown system message:")
                 log.warning(json.dumps(msg, indent=4))
         else:
             # Standard chat message
-            user = room.get_user_by_id(msg["uid"])
+            # Todo use DB if not found
+            uid = msg["uid"]
+            user = room.get_user_by_id(uid) or UserDb.get_user_by_uid(uid)
             if user:
                 # Ignore messages from users that are not in the room?
                 whisper = True if "w" in msg else False
                 self._event.new_message(room, user, msg["t"], whisper)
             else:
-                log.warning("Unknown UID: {0} -> {1}".format(msg["uid"], msg["t"]))
+                log.warning("Unknown UID: {0} -> {1}".format(uid, msg["t"]))
 
     def _messages_check(self):
         """
@@ -210,6 +232,24 @@ class ChatAPI:
                     self._process_message(room, msg)
             else:
                 log.error("Failed to get new messages: " + json_data['statusMessage'])
+
+    def get_user_by_name(self, nick):
+        """
+        Searches all rooms for a User by its nickname. If this search fails, it will try to search
+        in shared UserDb.
+        :param nick: string
+            User's nickname
+        :return: User instance or None if no User was found
+        """
+        # First search all active rooms
+        with self._room_list_lock:
+            for room in self._room_list:
+                for user in room.user_list:
+                    if user.name == nick:
+                        return user
+
+        # If previous search failed, search the UserDb
+        return UserDb.get_user_by_name(nick)
 
     def get_room_by_name(self, name):
         """
@@ -351,6 +391,7 @@ class ChatAPI:
             if match:
                 data = js.to_py_json(match.group(1))["data"]
                 room.user_list = [User(val) for key,val in data.items()]
+                UserDb.add_users(room.user_list)
             else:
                 raise RoomError("Failed to get user list for the room: "+room)
 
@@ -405,7 +446,7 @@ class ChatAPI:
         """
         if to_user:
             # Whispering
-            text = "/w "+to_user+" "+text
+            text = '/w "{0}" {1}'.format(to_user, text)
 
         # Find our stored room in the list, or leave it as is
         with self._room_list_lock:
@@ -433,4 +474,62 @@ class ChatAPI:
             # Process new messages, if any from the response
             self._process_room_messages_from_json(json_data, room)
 
+
+class UserDb:
+    """
+    Static class used to store all User instances for later search by ID or name
+    """
+
+    _lock = threading.Lock()
+    _users = []
+
+    @classmethod
+    def get_user_by_name(cls, nick):
+        """
+        Find user by name
+        :param nick: string
+        :return: User or None
+        """
+        with cls._lock:
+            return next((u for u in cls._users if u.name == nick), None)
+
+    @classmethod
+    def get_user_by_uid(cls, uid):
+        """
+        Find user by UID
+        :param uid: int
+        :return: User or None
+        """
+        with cls._lock:
+            return next((u for u in cls._users if u.id == uid), None)
+
+    @classmethod
+    def add_user(cls, user):
+        """
+        Adds user to the list, if it's not already there
+        :param user: User
+        """
+        u = cls.get_user_by_name(user.name)
+        with cls._lock:
+            if not u:
+                log.debug("UserDb: Adding user {0} ({1})".format(user.name, user.id))
+                cls._users.append(user)
+
+    @classmethod
+    def add_user_from_json(cls, json):
+        """
+        Adds user from JSON data to the list
+        :param json: JSON object
+        """
+        u = User(json)
+        cls.add_user(u)
+
+    @classmethod
+    def add_users(cls, users):
+        """
+        Adds multiple users
+        :param users: list of User
+        """
+        for user in users:
+            cls.add_user(user)
 

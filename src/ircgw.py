@@ -331,6 +331,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def system_message(self, room, message):
         self.reply_notice(to_ws("#" + room.name), message)
 
+    def user_mode(self, room, user, mode):
+        self.reply_mode(to_ws("#"+room.name), mode, to_ws(user.name))
+
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """ Allows multiple clients """

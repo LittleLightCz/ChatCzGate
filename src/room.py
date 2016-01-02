@@ -63,7 +63,7 @@ class User:
         self.name = data["nick"]
         self.gender = Gender(data["sex"])
         self.anonymous = bool(data["anonymous"])
-        self.idle = int(data["interval_idle"])
+        self.idle = int(data["interval_idle"]) if "interval_idle" in data else 0
         self.admin = int(data["roomAdmin"]) if "roomAdmin" in data else 0
         self.karma = data["karmaLevel"]
 
@@ -75,3 +75,4 @@ class Gender(Enum):
     """Enum for gender"""
     MALE = "m"
     FEMALE = "f"
+
