@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import threading
@@ -153,6 +154,9 @@ class ChatAPI:
                 if user:
                     room.remove_user(user)
                     self._event.user_left(room, user)
+            else:
+                log.warning("Unknown system message:")
+                log.warning(json.dumps(msg, indent=4))
         else:
             # Standard chat message
             user = room.get_user_by_id(msg["uid"])
