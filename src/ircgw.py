@@ -1,3 +1,4 @@
+import configparser
 import logging
 import re
 import socketserver
@@ -8,17 +9,19 @@ from chatapi import ChatAPI, ChatEvent
 from error import LoginError, MessageError
 from room import Gender
 
-LINE_BREAK = "\r\n"
-ENCODING = "UTF-8"
-
 IRC_HOSTNAME = 'localhost'
-IRC_LISTEN_PORT = 32132  # TODO get from config file
 UNICODE_SPACE = u'\xa0'
-
-VERSION = "0.1"
 
 log = logging.getLogger("chat")
 
+config = configparser.ConfigParser()  # TODO fallback values
+config.read('config.ini')
+
+ENCODING = "UTF-8"
+NEWLINE = "\r\n"
+VERSION = "1.0"
+
+IRC_PORT = config.getint("IRC Server", "port")
 
 def to_ws(text):
     """Convenience function for converting spaces into unicode whitespaces"""
@@ -46,9 +49,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         """ Handles incoming message """
         try:
             while True:  # TODO exit
-                data = self.request.recv(512).decode('utf-8')  # TODO readline ?
+                data = self.request.recv(512).decode(ENCODING)  # TODO readline ?
                 log.debug("RAW: %s" % data)
-                lines = data.split(LINE_BREAK)
+                lines = data.split(NEWLINE)
                 for line in lines:
                     self.parse_line(line)
         except Exception:
@@ -81,23 +84,23 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         :param response: string
             Message to be sent to the client
         """
-        log.debug("Sending: %s" % re.sub(LINE_BREAK+"$","",response))
+        log.debug("Sending: %s" % re.sub(NEWLINE + "$", "", response))
         with self._socket_lock:
             self.request.send(str.encode(response, encoding=ENCODING))
 
     def reply_join(self, name, channel):
         """ Send JOIN response to client """
-        response = ":%s JOIN %s %s" % (name, channel, LINE_BREAK)
+        response = ":%s JOIN %s %s" % (name, channel, NEWLINE)
         self.socket_send(response)
 
     def reply_part(self, name, channel):
         """ Send PART response to client """
-        response = ":%s PART %s %s" % (name, channel, LINE_BREAK)
+        response = ":%s PART %s %s" % (name, channel, NEWLINE)
         self.socket_send(response)
 
     def reply_privmsg(self, sender, to, text):
         """ Send PROVMSG response to client """
-        response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, LINE_BREAK)
+        response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, NEWLINE)
         self.socket_send(response)
 
     def reply_notice(self, channel, message):
@@ -107,13 +110,13 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def reply_mode(self, channel, mode, nick):
         """ Send MODE response to client """
-        response = ":%s MODE %s %s %s %s" % (self.hostname, channel, mode, nick, LINE_BREAK)
+        response = ":%s MODE %s %s %s %s" % (self.hostname, channel, mode, nick, NEWLINE)
         self.socket_send(response)
 
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
-        response = ":%s %03d %s %s %s" % (self.hostname, response_number, self.nickname, message, LINE_BREAK)
+        response = ":%s %03d %s %s %s" % (self.hostname, response_number, self.nickname, message, NEWLINE)
         self.socket_send(response)
 
     def not_enough_arguments_reply(self, command_name):
@@ -136,9 +139,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         nick = to_ws(user.name)
         host = self.hostname
         gender = user.gender.value
-        op = "" # Admin SS DS ?
+        op = ""  # Admin SS DS ?
         response = "#%s %s@%s unknown %s %s %s %s:0 %s %s" % \
-                   (to_ws(room.name), nick, host, host, nick, gender, op, nick, LINE_BREAK)
+                   (to_ws(room.name), nick, host, host, nick, gender, op, nick, NEWLINE)
         self.socket_send(response)
 
     def set_user_mode(self, user, room):
@@ -224,10 +227,10 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     self.chatapi.join(r)
                     # TODO RPL_NOTOPIC
                     room_name = to_ws(r.name)
-                    self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.nickname, self.username, self.hostname, room_name, LINE_BREAK))
+                    self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.get_nick(), self.username, self.hostname, room_name, NEWLINE))
                     self.reply(332, "#%s :%s" % (room_name, r.description))
                     users_in_room = ' '.join([to_ws(x.name) for x in r.user_list if x.name != self.get_nick()])
-                    self.reply(353, "= #%s :%s %s" % (room_name, self.nickname, users_in_room))
+                    self.reply(353, "= #%s :%s %s" % (room_name, self.get_nick(), users_in_room))
                     self.reply(366, "#%s :End of /NAMES list." % room_name)
                 else:
                     log.error("Couldn't find the room for name: ", room)
@@ -264,7 +267,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
         def ping_handler():
             log.debug(args)
-            pong = "PONG %s :1 %s%s" % (args, self.hostname, LINE_BREAK)  # TODO check
+            pong = "PONG %s :1 %s%s" % (args, self.hostname, NEWLINE)  # TODO check
             self.socket_send(pong)
 
         def oper_handler():
@@ -343,11 +346,11 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 Main launch script
 """
 
-t = ThreadedTCPServer((IRC_HOSTNAME, IRC_LISTEN_PORT), IRCServer)  # TODO hostname from config
+t = ThreadedTCPServer((IRC_HOSTNAME, IRC_PORT), IRCServer)  # TODO hostname from config
 
 try:
     log.info("*** ChatCzGate version {0} ***".format(VERSION))
-    log.info("Listening on port: {0}".format(IRC_LISTEN_PORT))
+    log.info("Listening on port: {0}".format(IRC_PORT))
     t.serve_forever()
 except KeyboardInterrupt:
     sys.exit(0)

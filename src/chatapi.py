@@ -1,3 +1,4 @@
+import configparser
 import json
 import logging
 import re
@@ -24,16 +25,23 @@ JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
 MESSAGES_CHECK_INTERVAL = 5
 USERS_CHECK_INTERVAL = 50
 
-#-------------------------------------------------------------------------------
-#Temporary logger init ... will be moved to main script file afterwards ...
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+
+# -------------------------------------------------------------------------------
+# Temporary logger init ... will be moved to main script file afterwards ...
 
 LOGGER_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
 
-#Init logger
-logging.basicConfig(level=logging.DEBUG,
-                format=LOGGER_FORMAT,
-                filename='log.txt',
-                filemode='a')
+# Init logger
+logging.basicConfig(
+    level=config.get("Global", "loglevel", fallback="ERROR"),
+    format=LOGGER_FORMAT,
+    filename='log.txt',
+    filemode='a'
+)
 # define a Handler which writes INFO messages or higher to the sys.stderr
 console = logging.StreamHandler()
 console.setLevel(logging.DEBUG)
@@ -47,7 +55,7 @@ log = logging.getLogger('chat')
 
 log.addHandler(console)
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 class ChatEvent:
