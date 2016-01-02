@@ -100,6 +100,11 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, LINE_BREAK)
         self.socket_send(response)
 
+    def reply_notice(self, channel, message):
+        """ Send NOTICE response to client """
+        response = ":%s NOTICE %s :%s %s" % (self.hostname, channel, message, LINE_BREAK)
+        self.socket_send(response)
+
     def reply_mode(self, channel, mode, nick):
         """ Send MODE response to client """
         response = ":%s MODE %s %s %s %s" % (self.hostname, channel, mode, nick, LINE_BREAK)
@@ -322,6 +327,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def user_left(self, room, user):
         if user.name != self.get_nick():
             self.reply_part(to_ws(user.name), to_ws("#"+room.name))
+
+    def system_message(self, room, message):
+        self.reply_notice(to_ws("#" + room.name), message)
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

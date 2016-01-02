@@ -65,7 +65,6 @@ class ChatEvent:
             True if the user is whispering to you
         """
         log.debug("<{0}> {1}: {2}".format(room.name, user.name, text))
-        pass
 
     def user_joined(self, room, user):
         """
@@ -74,7 +73,6 @@ class ChatEvent:
         :param user: User
         """
         log.debug("{1} joined {0}".format(room.name, user.name))
-        pass
 
     def user_left(self, room, user):
         """
@@ -83,7 +81,14 @@ class ChatEvent:
         :param user: User
         """
         log.debug("{1} left {0}".format(room.name, user.name))
-        pass
+
+    def system_message(self, room, message):
+        """
+        This method is called when there is new system message
+        :param room: Room
+        :param message: string
+        """
+        log.debug("<{0}> SYSTEM: {2}".format(room.name, message))
 
 
 class ChatAPI:
@@ -154,6 +159,9 @@ class ChatAPI:
                 if user:
                     room.remove_user(user)
                     self._event.user_left(room, user)
+            elif msg["s"] == "cli":
+                # Send system notice
+                self._event.system_message(room, msg["t"])
             else:
                 log.warning("Unknown system message:")
                 log.warning(json.dumps(msg, indent=4))
