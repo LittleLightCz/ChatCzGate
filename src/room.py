@@ -43,17 +43,14 @@ class Room:
     def get_user_by_id(self, id):
         return next((u for u in self.user_list if u.id == id), None)
 
+    def __str__(self):
+        return self.name
 
 
 class User:
     """
     Data holder class for user
     """
-    def __init__(self):
-        self.id = -1
-        self.name = ""
-        self.gender = Gender.MALE
-
     def __init__(self, data):
         """
         Constructor from JSON data found in the room page right after entrance

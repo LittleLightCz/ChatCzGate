@@ -198,7 +198,6 @@ class ChatAPI:
                 log.warning(json.dumps(msg, indent=4))
         else:
             # Standard chat message
-            # Todo use DB if not found
             uid = msg["uid"]
             user = room.get_user_by_id(uid) or UserDb.get_user_by_uid(uid)
             if user:
@@ -206,9 +205,9 @@ class ChatAPI:
                 whisper = "w" in msg
                 if whisper:
                     # If to == 1, then ignore this whisper message because it comes from me
-                    if msg["to"] == 0:
+                    # and ignore all whisper messages from other rooms except the "first" one
+                    if msg["to"] == 0 and room != self._room_list[0]:
                         self._event.new_message(room, user, msg["t"], whisper)
-                    log.debug(json.dumps(msg, indent=4))
                 else:
                     self._event.new_message(room, user, msg["t"], whisper)
             else:
