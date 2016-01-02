@@ -59,13 +59,13 @@ class User:
         Constructor from JSON data found in the room page right after entrance
         :param data: JSON data object
         """
-        self.id = int(data["id"])
-        self.name = data["nick"]
-        self.gender = Gender(data["sex"])
-        self.anonymous = bool(data["anonymous"])
-        self.idle = int(data["interval_idle"]) if "interval_idle" in data else 0
-        self.admin = int(data["roomAdmin"]) if "roomAdmin" in data else 0
-        self.karma = data["karmaLevel"]
+        self.id = int(data.get("id") or data.get("uid") or -1)
+        self.name = data.get("nick", "")
+        self.gender = Gender(data.get("sex", "m"))
+        self.anonymous = bool(data.get("anonymous", True))
+        self.idle = int(data.get("interval_idle", 0))
+        self.admin = int(data.get("roomAdmin", 0))
+        self.karma = data.get("karmaLevel", "")
 
     def __str__(self):
         return self.name

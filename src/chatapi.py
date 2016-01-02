@@ -183,13 +183,16 @@ class ChatAPI:
             elif msg["s"] == "cli":
                 # Send system notice
                 self._event.system_message(room, msg["t"])
+            elif msg["s"] == "user":
+                # Info about whispering user ...
+                UserDb.add_user_from_json(msg["user"])
             elif msg["s"] == "admin":
                 # Send mode OP
                 user = UserDb.get_user_by_name(msg["nick"])
                 self._event.user_mode(room, user, "+h")
             elif msg["s"] == "friend":
                 # ?? just add him to DB :-)
-                UserDb.add_user_from_json(msg["user"])
+                UserDb.add_user_from_json(msg)
             else:
                 log.warning("Unknown system message:")
                 log.warning(json.dumps(msg, indent=4))
