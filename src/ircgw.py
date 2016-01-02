@@ -105,7 +105,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def reply_notice(self, channel, message):
         """ Send NOTICE response to client """
-        response = ":%s NOTICE %s :%s %s" % (self.hostname, channel, message, LINE_BREAK)
+        response = ":%s NOTICE %s :%s %s" % (self.hostname, channel, message, NEWLINE)
         self.socket_send(response)
 
     def reply_mode(self, channel, mode, nick):
