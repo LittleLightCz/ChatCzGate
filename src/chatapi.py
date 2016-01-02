@@ -203,8 +203,14 @@ class ChatAPI:
             user = room.get_user_by_id(uid) or UserDb.get_user_by_uid(uid)
             if user:
                 # Ignore messages from users that are not in the room?
-                whisper = True if "w" in msg else False
-                self._event.new_message(room, user, msg["t"], whisper)
+                whisper = "w" in msg
+                if whisper:
+                    # If to == 1, then ignore this whisper message because it comes from me
+                    if msg["to"] == 0:
+                        self._event.new_message(room, user, msg["t"], whisper)
+                    log.debug(json.dumps(msg, indent=4))
+                else:
+                    self._event.new_message(room, user, msg["t"], whisper)
             else:
                 log.warning("Unknown UID: {0} -> {1}".format(uid, msg["t"]))
 
