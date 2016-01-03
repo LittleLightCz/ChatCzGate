@@ -127,12 +127,29 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply(372, ":- "+text)
 
     def send_welcome_message(self):
-        self.reply(1, ":Welcome to the Internet Relay Network %s!%s@%s" % (self.nickname, self.username, self.hostname))
-        self.reply(2, ":Your host is %s, running version %s" % (self.hostname, VERSION))
+
+        welcome = ''':
+          ____ _           _
+         / ___| |__   __ _| |_   ___ ____
+        | |   | '_ \ / _` | __| / __|_  /
+        | |___| | | | (_| | |_ | (__ / /
+         \____|_| |_|\__,_|\__(_)___/___|
+
+        ########################################
+
+        Welcome to the ChatCzGate %s!
+
+        Website: https://github.com/LittleLightCz/ChatCzGate
+        Credits: Svetylk0, Imrija
+
+        Have fun! :-)
+        ''' % VERSION
+
+        self.reply(1, welcome)
+        self.reply(2, ":You're running version %s" % VERSION)
         self.reply(3, ":")
         self.reply(4, "")
         self.reply(375, "Message of the day -")
-        self.send_MOTD_text("*** ChatCzGate version "+VERSION+" ***")
         self.send_MOTD_text("With great power comes great responsibility ...")
         self.reply(376, self.get_nick() + " :End of MOTD command.")
 
