@@ -14,14 +14,15 @@ UNICODE_SPACE = u'\xa0'
 
 log = logging.getLogger("chat")
 
-config = configparser.ConfigParser()  # TODO fallback values
+config = configparser.ConfigParser()
 config.read('config.ini')
 
 ENCODING = "UTF-8"
 NEWLINE = "\r\n"
 VERSION = "1.0"
 
-IRC_PORT = config.getint("IRC Server", "port")
+IRC_PORT = config.getint("IRC Server", "port", fallback=6667)
+
 
 def to_ws(text):
     """Convenience function for converting spaces into unicode whitespaces"""

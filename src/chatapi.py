@@ -37,7 +37,7 @@ LOGGER_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
 
 # Init logger
 logging.basicConfig(
-    level=config.get("Global", "loglevel", fallback="ERROR"),
+    level=config.get("Global", "loglevel", fallback="INFO"),
     format=LOGGER_FORMAT,
     filename='log.txt',
     filemode='a'
