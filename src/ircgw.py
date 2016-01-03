@@ -109,6 +109,11 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         response = ":%s NOTICE %s :%s %s" % (self.hostname, channel, message, NEWLINE)
         self.socket_send(response)
 
+    def reply_notice_all(self, message):
+        """ Send NOTICE response to all active channels, that is user in """
+        for channel in self.chatapi.get_active_room_names():
+            self.reply_notice(to_ws("#"+channel), message)
+
     def reply_mode(self, channel, mode, nick):
         """ Send MODE response to client """
         response = ":%s MODE %s %s %s %s" % (self.hostname, channel, mode, nick, NEWLINE)
@@ -297,6 +302,24 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             pong = "PONG %s :1 %s%s" % (args, self.hostname, NEWLINE)  # TODO check
             self.socket_send(pong)
 
+        def whois_handler():
+            m = next(re.finditer(r"[^ ]+", args), None)
+            if m:
+                nick = from_ws(m.group())
+                profile = self.chatapi.get_user_profile(nick)
+                if profile:
+                    self.reply_notice_all("=== WHOIS Profile ===")
+                    self.reply_notice_all("Online: {0}".format(profile.online))
+                    self.reply_notice_all("Karma: {0}".format(profile.karma))
+                    self.reply_notice_all("Nick: {0}".format(profile.nick))
+                    self.reply_notice_all("Věk: {0}".format(profile.age))
+                    self.reply_notice_all("Registrace: {0}".format(profile.registration))
+                    self.reply_notice_all("Naposledy: {0}".format(profile.last_seen))
+                    self.reply_notice_all("Profil zobrazen: {0}".format(profile.viewed))
+                    self.reply_notice_all("=== End Of WHOIS Profile ===")
+                else:
+                    self.reply_notice_all("WHOIS: Failed to get profile of: %s" % to_ws(nick))
+
         def oper_handler():
             pass  # TODO
 
@@ -324,6 +347,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             "JOIN": join_handler,
             "PART": part_handler,
             "WHO": who_handler,
+            "WHOIS": whois_handler,
             "QUIT": quit_handler,
             "PING": ping_handler,
             "PRIVMSG": privmsg_handler,

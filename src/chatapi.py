@@ -17,6 +17,7 @@ CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
 LOGOUT_URL = CHAT_CZ_URL + "/logout"
 LEAVE_ROOM_URL = CHAT_CZ_URL + "/leaveRoom/"
+PROFILE_URL = CHAT_CZ_URL + "/p/"
 
 JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
 JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
@@ -276,6 +277,14 @@ class ChatAPI:
         """
         return next((r for r in self.get_room_list() if r.name == name), None)
 
+    def get_active_room_names(self):
+        """
+        Returns list of active room names
+        :return: List of strings
+        """
+        with self._room_list_lock:
+            return [r.name for r in self._room_list]
+
     def get_active_room_by_name(self, name):
         """
         Returns room instance from internal _room_list by its name
@@ -368,6 +377,50 @@ class ChatAPI:
         :return: Searched <li> tag or None
         """
         return html.find("li", {"id": "nav-user"})
+
+    def get_user_profile(self, nick):
+        """
+        Return user's profile
+        :param nick: string
+        :return: UserProfile
+        """
+
+        resp = req.get(PROFILE_URL+nick, headers=self._headers)
+
+        html = BeautifulSoup(resp.text, "html.parser")
+
+        div = html.find("div", {"id": "userInfo"})
+
+        if div:
+            profile = UserProfile()
+            profile.online = bool(div.div.h2.find("i", {"title": "online"}))
+
+            if div.div.h2.span:
+                profile.karma = div.div.h2.span.find("i", {"class": "fa-stack-1x"}).text
+
+            profile.nick = div.div.h2.text.strip()
+
+            text = div.div.text
+            m = next(re.finditer(r"věk:\s*(.+)", text), None)
+            if m:
+                profile.age = m.group(1).strip()
+
+            m = next(re.finditer(r"registrace:\s*(.+)", text), None)
+            if m:
+                profile.registration = m.group(1).strip()
+
+            m = next(re.finditer(r"naposledy:\s*(.+)", text), None)
+            if m:
+                profile.last_seen = m.group(1).strip()
+
+            m = next(re.finditer(r"profil zobrazen:\s*(.+)", text), None)
+            if m:
+                profile.viewed = m.group(1).strip()
+
+            return profile
+        else:
+            return None
+
 
     def logout(self):
         """
@@ -498,6 +551,21 @@ class ChatAPI:
         else:
             # Process new messages, if any from the response
             self._process_room_messages_from_json(json_data, room)
+
+
+class UserProfile:
+    """
+    Data holder class form user's profile
+    """
+
+    def __init__(self):
+        self.online = False
+        self.karma = ""
+        self.nick = ""
+        self.age = ""
+        self.registration = ""
+        self.last_seen = ""
+        self.viewed = ""
 
 
 class UserDb:
