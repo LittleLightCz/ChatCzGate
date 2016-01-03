@@ -158,7 +158,6 @@ class ChatAPI:
                 data = {"roomId": room.id}
                 resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
 
-
     def _process_message(self, room, msg):
         """
         Parse and process JSON message data
@@ -211,7 +210,9 @@ class ChatAPI:
                 else:
                     self._event.new_message(room, user, msg["t"], whisper)
             else:
-                log.warning("Unknown UID: {0} -> {1}".format(uid, msg["t"]))
+                message = "Unknown UID: {0} -> {1}".format(uid, msg["t"])
+                log.warning(message)
+                self._event.system_message(room, "WARNING: "+message)
 
     def _messages_check(self):
         """
