@@ -351,8 +351,14 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def user_joined(self, room, user):
         if user.name != self.get_nick():
-            self.reply_join(to_ws(user.name), to_ws("#" + room.name))
+            nick = to_ws(user.name)
+            channel = to_ws("#" + room.name)
+
+            self.reply_join(nick, channel)
             self.set_user_mode(user, room)
+
+            if user.anonymous:
+                self.reply_notice(channel, "INFO: {0} is anonymous".format(nick))
 
     def user_left(self, room, user):
         if user.name != self.get_nick():
