@@ -411,6 +411,14 @@ class ChatAPI:
             else:
                 raise RoomError("Failed to get user list for the room: "+room)
 
+            # Get admin list (not mandatory)
+            match = re.search(r"adminList:\s*(\{.*?\})", resp.text)
+            if match:
+                data = js.to_py_json(match.group(1))
+                room.admin_list = [val for key,val in data.items()]
+            else:
+                log.warning("Failed to parse Admin list of the room: "+room.name)
+
         # Add room to the list
         with self._room_list_lock:
             self._room_list.append(room)

@@ -153,6 +153,15 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         if user.gender == Gender.FEMALE:
             self.reply_mode(channel, "+v", nick)
 
+        # Mark operator
+        if user.name in room.admin_list:
+            self.reply_mode(channel, "+o", nick)
+
+        # Mark room admin
+        if user.admin:
+            self.reply_mode(channel, "+A", nick)
+
+
     def handle_command(self, command, args):
         """ IRC command handlers """
         def user_handler():

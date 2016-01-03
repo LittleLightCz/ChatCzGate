@@ -15,6 +15,7 @@ class Room:
         self.description = description
         self.users_count = users_count
         self.user_list = []
+        self.admin_list = []
         self.chat_index = ""
 
         self.lock = Lock()
