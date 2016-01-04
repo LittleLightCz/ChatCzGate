@@ -149,15 +149,17 @@ class ChatAPI:
         """
         Private method that updates user idle times. It is scheduled to run every USERS_CHECK_INTERVAL seconds.
         """
+        try:
+            # Get header
+            resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
 
-        # Get header
-        resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
-
-        # Get room's user info
-        with self._room_list_lock:
-            for room in self._room_list:
-                data = {"roomId": room.id}
-                resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
+            # Get room's user info
+            with self._room_list_lock:
+                for room in self._room_list:
+                    data = {"roomId": room.id}
+                    resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
+        except:
+            log.exception("Error during users' info check!")
 
     def _process_message(self, room, msg):
         """
@@ -220,19 +222,22 @@ class ChatAPI:
         Checks for new messages and triggers appropriate event
         :param room: Room
         """
-        with self._room_list_lock:
-            for room in self._room_list:
-                data = {
-                    "roomId": room.id,
-                    "chatIndex": room.chat_index,
-                }
+        try:
+            with self._room_list_lock:
+                for room in self._room_list:
+                    data = {
+                        "roomId": room.id,
+                        "chatIndex": room.chat_index,
+                    }
 
-                log.debug("Checking for new messages in: "+room.name)
-                resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
-                self._cookies.update(resp.cookies)
+                    log.debug("Checking for new messages in: "+room.name)
+                    resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
+                    self._cookies.update(resp.cookies)
 
-                json_data = resp.json()
-                self._process_room_messages_from_json(json_data, room)
+                    json_data = resp.json()
+                    self._process_room_messages_from_json(json_data, room)
+        except:
+            log.exception("Error during new messages check!")
 
     def _process_room_messages_from_json(self, json_data, room):
         """
