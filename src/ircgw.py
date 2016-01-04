@@ -3,10 +3,12 @@ import logging
 import re
 import socketserver
 import sys
-from threading import Lock
+import plugins
 
+from threading import Lock
 from chatapi import ChatAPI, ChatEvent
 from error import LoginError, MessageError
+from plugins import PluginData
 from room import Gender
 
 IRC_HOSTNAME = 'localhost'
@@ -54,7 +56,13 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 log.debug("RAW: %s" % data)
                 lines = data.split(NEWLINE)
                 for line in lines:
-                    self.parse_line(line)
+                    data = plugins.process(PluginData(command=line))
+                    for cmd in data.result_commands:
+                        self.parse_line(cmd)
+
+                    for reply in data.result_replies:
+                        self.socket_send(reply)
+
         except Exception:
             log.exception("Exception during socket reading!")
             try:
@@ -85,9 +93,14 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         :param response: string
             Message to be sent to the client
         """
-        log.debug("Sending: %s" % re.sub(NEWLINE + "$", "", response))
-        with self._socket_lock:
-            self.request.send(str.encode(response, encoding=ENCODING))
+
+        # TODO this doesn't create a new isntance!!
+        data = PluginData(reply=response)
+        plugins.process(data)
+        for reply in data.result_replies:
+            log.debug("Sending: %s" % re.sub(NEWLINE + "$", "", reply))
+            with self._socket_lock:
+                self.request.send(str.encode(reply, encoding=ENCODING))
 
     def reply_join(self, name, channel):
         """ Send JOIN response to client """
@@ -403,6 +416,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 Main launch script
 """
 
+plugins.import_plugins()
 t = ThreadedTCPServer((IRC_HOSTNAME, IRC_PORT), IRCServer)  # TODO hostname from config
 
 try:

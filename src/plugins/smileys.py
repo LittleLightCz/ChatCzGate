@@ -44,7 +44,7 @@ def process(data):
 
     # Process data ....
     if data.reply:
-        m = re.match(r"(:.+?PRIVMSG.+?:)(.+)", data.reply)
+        m = re.match(r"(:.+?PRIVMSG.+?:)(.+)", data.reply, flags=re.DOTALL)
         if m:
             prefix, msg = m.groups()
             smiley_nums = set([int(s.group(1)) for s in re.finditer(r"\*(\d+)\*", msg)])

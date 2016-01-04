@@ -2,6 +2,11 @@ import os
 import re
 import sys
 
+import logging
+
+
+log = logging.getLogger("chat")
+
 class PluginData:
     """
     Data holder class that is passed to each plugin individually to process its content
@@ -25,11 +30,14 @@ class PluginData:
 def import_plugins(path='plugins'):
     sys.path.append(path)
 
+    global plugins
+    plugins = []
+
     for entry in os.listdir(path):
         if os.path.isfile(os.path.join(path, entry)):
             match = re.search("(.+)\.py(c?)$", entry)
             if match:
-                globals()[match.groups()[0]] = __import__(match.groups()[0])
+                plugins.append(__import__(match.group(1)))
 
 
 def process(data):
@@ -42,17 +50,11 @@ def process(data):
         for plugin in plugins:
             if not plugin.process(data):
                 break
-    except Exception:
+    except:
         log.exception("Error occurred in plugin processing")
 
     # Verify results (in case nothing was processed)
     data.verify_results()
+    return data
 
 
-# example
-
-import_plugins()
-
-smileys_plugin = smileys.SmileysPlugin()
-# TODO maybe move construct to plugins loader ?
-# TODO how to correct syntax highlight ?
