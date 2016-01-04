@@ -1,24 +1,45 @@
 import re
+import logging
+
+log = logging.getLogger("chat")
 
 smiley_url = "https://chat.cz/img/smile/%d.gif"
 
 name = "Smileys"
 
 smileys = {
-    ":-D" : [1],
-    ";-)" : [4],
+    "8-)" : [7],
+    ":-)" : [6],
+    ":-D" : [1, 475],
     ":-O" : [8],
-    "Srdce-oči" : [5],
-    "ROFL" : [202],
-    "Pojď sem" : [584],
+    ";-)" : [4],
     "Ano" : [670],
-    "Mrk" : [680],
-    "Svíčka" : [641],
-    "Orál" : [622, 974],
-    "Dumám" : [92],
-    "Překvapený" : [10],
+    "BDSM bič" : [950],
+    "Checheche" : [471, 83],
+    "Dumám" : [92, 564],
+    "Facepalm" : [766],
+    "Fuck you!" : [244, 251],
     "Hihi" : [470],
-    "Checheche" : [471],
+    "Hlavou o zeď" : [103],
+    "Hm" : [9],
+    "Kmitající jazyk" : [990],
+    "Kobra" : [82],
+    "Mrk" : [680],
+    "Mává" : [646, 743, 987, 325, 472],
+    "Objímám" : [799],
+    "Orál" : [622, 974],
+    "Pavouk" : [88],
+    "Pojď sem" : [584],
+    "Překvapený" : [10],
+    "ROFL" : [202],
+    "Slunce" : [1033],
+    "Soulož" : [237],
+    "Sova" : [308],
+    "Srdce-oči" : [5],
+    "Svíčka" : [641],
+    "Utíká" : [86],
+    "Znechucený" : [76],
+    "Čtyřlístek" : [227],
 }
 
 def find_repl(num):
@@ -32,7 +53,7 @@ def find_repl(num):
         if num in nums:
             return repl
 
-    print("Unknown smiley: " + smiley_url % num)
+    log.warning("Unknown smiley: " + smiley_url % num)
     return str(num)
 
 def process(data):

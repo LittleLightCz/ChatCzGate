@@ -4,7 +4,6 @@ import sys
 
 import logging
 
-
 log = logging.getLogger("chat")
 
 class PluginData:
