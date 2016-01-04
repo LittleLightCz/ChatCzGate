@@ -93,10 +93,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         :param response: string
             Message to be sent to the client
         """
-
-        # TODO this doesn't create a new isntance!!
-        data = PluginData(reply=response)
-        plugins.process(data)
+        data = plugins.process(PluginData(reply=response))
         for reply in data.result_replies:
             log.debug("Sending: %s" % re.sub(NEWLINE + "$", "", reply))
             with self._socket_lock:

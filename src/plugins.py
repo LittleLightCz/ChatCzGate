@@ -11,11 +11,11 @@ class PluginData:
     """
     Data holder class that is passed to each plugin individually to process its content
     """
-    def __init__(self, reply=None, command=None, result_replies=[], result_commands=[]):
+    def __init__(self, reply=None, command=None):
         self.reply = reply
         self.command = command
-        self.result_replies = result_replies
-        self.result_commands = result_commands
+        self.result_replies = []
+        self.result_commands = []
 
     def verify_results(self):
         """
@@ -27,7 +27,7 @@ class PluginData:
         if self.command:
             self.result_commands = self.result_commands or [self.command]
 
-def import_plugins(path='plugins'):
+def import_plugins(path='plug_ins'):
     sys.path.append(path)
 
     global plugins
@@ -44,7 +44,7 @@ def process(data):
     """
     Process data
     :param data: PluginData
-        Data containing reply or command to be processed by the plugins
+        Data containing reply or command to be processed by the plug_ins
     """
     try:
         for plugin in plugins:
