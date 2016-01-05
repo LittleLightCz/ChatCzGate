@@ -81,7 +81,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
             debug_args = re.sub(".", "*", args) if command == "PASS" else args
             log.debug("Parsed command %s args: %s " % (command, debug_args))
-            self.handle_command(command, args)
+            self.handle_command(command.upper(), args)
 
     def get_nick(self):
         return self.nickname or self.username
