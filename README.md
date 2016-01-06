@@ -6,3 +6,4 @@ Dependencies:
 -------------
 - BeautifulSoup 4 *-> pip install bs4*
 - schedule *-> pip install schedule*
+- demjson *-> pip install demjson*
