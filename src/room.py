@@ -23,6 +23,17 @@ class Room:
     def __str__(self):
         return self.name
 
+    def has_user(self, user):
+        """
+        :param user: User
+        :return True if this room already contains user with the same nickname
+        """
+        for u in self.user_list:
+            if u.name == user.name:
+                return True
+
+        return False
+
     def add_user(self, user):
         """
         Adds user to the user_list

@@ -169,10 +169,12 @@ class ChatAPI:
             # System message
             if msg["s"] == "enter":
                 user = User(msg["user"])
-                room.add_user(user)
                 # Add user to DB
                 UserDb.add_user(user)
-                self._event.user_joined(room, user)
+                # Add user to the room if he already isn't there
+                if not room.has_user(user):
+                    room.add_user(user)
+                    self._event.user_joined(room, user)
             elif msg["s"] in ["leave","auto_leave"]:
                 user = room.get_user_by_id(msg["uid"])
                 if user:
