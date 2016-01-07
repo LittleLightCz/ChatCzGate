@@ -275,8 +275,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     self.reply(353, "= #%s :%s %s" % (room_name, self.get_nick(), users_in_room))
                     self.reply(366, "#%s :End of /NAMES list." % room_name)
                 else:
-                    log.error("Couldn't find the room for name: ", room)
-                    # TODO room not found
+                    log.error("Couldn't find the room for name: {0}".format(room))
 
         def who_handler():
             arguments = args.split(' ')
