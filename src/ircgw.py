@@ -194,7 +194,6 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         if user.admin:
             self.reply_mode(channel, "+A", nick)
 
-
     def handle_command(self, command, args):
         """ IRC command handlers """
         def user_handler():
