@@ -39,7 +39,12 @@ class Plugins:
             if os.path.isfile(os.path.join(path, entry)):
                 match = re.search("(.+)\.py(c?)$", entry)
                 if match:
-                    self.plugins.append(__import__(match.group(1)))
+                    try:
+                        module = __import__(match.group(1))
+                        plugin_class = getattr(module, "Plugin")
+                        self.plugins.append(plugin_class())
+                    except:
+                        log.exception("File {0} doesn't contain class Plugin!".format(entry))
 
     def process(self, data):
         """
