@@ -3,12 +3,11 @@ import logging
 import re
 import socketserver
 import sys
-import plugins
 
 from threading import Lock
 from chatapi import ChatAPI, ChatEvent
 from error import LoginError, MessageError
-from plugins import PluginData
+from plugins import PluginData, Plugins
 from room import Gender
 
 IRC_HOSTNAME = 'localhost'
@@ -45,6 +44,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.username = None
         self.password = None
         self.hostname = IRC_HOSTNAME
+        self.plugins = Plugins()
         self._socket_lock = Lock()
         super().__init__(request, client_address, server)
 
@@ -56,7 +56,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 log.debug("RAW: %s" % data)
                 lines = data.split(NEWLINE)
                 for line in lines:
-                    data = plugins.process(PluginData(command=line))
+                    data = self.plugins.process(PluginData(command=line))
                     for cmd in data.result_commands:
                         self.parse_line(cmd)
 
@@ -93,7 +93,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         :param response: string
             Message to be sent to the client
         """
-        data = plugins.process(PluginData(reply=response))
+        data = self.plugins.process(PluginData(reply=response))
         for reply in data.result_replies:
             log.debug("Sending: %s" % re.sub(NEWLINE + "$", "", reply))
             with self._socket_lock:
@@ -412,7 +412,6 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 Main launch script
 """
 
-plugins.import_plugins()
 t = ThreadedTCPServer((IRC_HOSTNAME, IRC_PORT), IRCServer)  # TODO hostname from config
 
 try:

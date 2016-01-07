@@ -6,6 +6,7 @@ import logging
 
 log = logging.getLogger("chat")
 
+
 class PluginData:
     """
     Data holder class that is passed to each plugin individually to process its content
@@ -26,34 +27,33 @@ class PluginData:
         if self.command:
             self.result_commands = self.result_commands or [self.command]
 
-def import_plugins(path='plug_ins'):
-    sys.path.append(path)
 
-    global plugins
-    plugins = []
+class Plugins:
 
-    for entry in os.listdir(path):
-        if os.path.isfile(os.path.join(path, entry)):
-            match = re.search("(.+)\.py(c?)$", entry)
-            if match:
-                plugins.append(__import__(match.group(1)))
+    def __init__(self, path="plug_ins"):
+        sys.path.append(path)
 
+        self.plugins = []
 
-def process(data):
-    """
-    Process data
-    :param data: PluginData
-        Data containing reply or command to be processed by the plug_ins
-    """
-    try:
-        for plugin in plugins:
-            if not plugin.process(data):
-                break
-    except:
-        log.exception("Error occurred in plugin processing")
+        for entry in os.listdir(path):
+            if os.path.isfile(os.path.join(path, entry)):
+                match = re.search("(.+)\.py(c?)$", entry)
+                if match:
+                    self.plugins.append(__import__(match.group(1)))
 
-    # Verify results (in case nothing was processed)
-    data.verify_results()
-    return data
+    def process(self, data):
+        """
+        Process data
+        :param data: PluginData
+            Data containing reply or command to be processed by the plug_ins
+        """
+        try:
+            for plugin in self.plugins:
+                if not plugin.process(data):
+                    break
+        except:
+            log.exception("Error occurred in plugin processing")
 
-
+        # Verify results (in case nothing was processed)
+        data.verify_results()
+        return data
