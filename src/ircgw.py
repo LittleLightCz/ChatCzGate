@@ -51,17 +51,17 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     def handle(self):
         """ Handles incoming message """
         try:
+            socket_file = self.request.makefile(mode="r", encoding=ENCODING)
             while True:  # TODO exit
-                data = self.request.recv(512).decode(ENCODING)  # TODO readline ?
-                log.debug("RAW: %s" % data)
-                lines = data.split(NEWLINE)
-                for line in lines:
-                    data = self.plugins.process(PluginData(command=line))
-                    for cmd in data.result_commands:
-                        self.parse_line(cmd)
+                line = socket_file.readline()
+                log.debug("RAW: %s" % line)
 
-                    for reply in data.result_replies:
-                        self.socket_send(reply)
+                data = self.plugins.process(PluginData(command=line))
+                for cmd in data.result_commands:
+                    self.parse_line(cmd)
+
+                for reply in data.result_replies:
+                    self.socket_send(reply)
 
         except Exception:
             log.exception("Exception during socket reading!")
