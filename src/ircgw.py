@@ -129,6 +129,11 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         response = ":%s MODE %s %s %s %s" % (self.hostname, channel, mode, nick, NEWLINE)
         self.socket_send(response)
 
+    def reply_kick(self, channel, reason):
+        """ Send KICK response to client """
+        response = ":%s KICK %s %s %s" % (self.hostname, channel, self.get_nick(), NEWLINE)
+        self.socket_send(response)
+
     def reply(self, response_number, message):
         """ Send response to client """
         # TODO get server name
@@ -401,6 +406,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def user_mode(self, room, user, mode):
         self.reply_mode(to_ws("#"+room.name), mode, to_ws(user.name))
+
+    def kicked(self, room):
+        self.reply_kick(to_ws("#"+room.name), "Reason not implemented yet!")
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

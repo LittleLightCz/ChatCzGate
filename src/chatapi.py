@@ -1,4 +1,5 @@
 import configparser
+import html
 import json
 import logging
 import re
@@ -106,6 +107,13 @@ class ChatEvent:
         """
         log.debug("<{0}> {1} => Mode {2}".format(room.name, user.name, mode))
 
+    def kicked(self, room):
+        """
+        This method is called when you have been kicked from the room
+        :param room: Room
+        """
+        log.debug("<{0}> => You have been kicked@!".format(room.name))
+
 
 class ChatAPI:
     """
@@ -205,13 +213,14 @@ class ChatAPI:
             if user:
                 # Ignore messages from users that are not in the room?
                 whisper = "w" in msg
+                text = html.unescape(msg["t"])
                 if whisper:
                     # If to == 1, then ignore this whisper message because it comes from me
                     # and ignore all whisper messages from other rooms except the "first" one
                     if msg["to"] == 0 and room == self._room_list[0]:
-                        self._event.new_message(room, user, msg["t"], whisper)
+                        self._event.new_message(room, user, text, whisper)
                 else:
-                    self._event.new_message(room, user, msg["t"], whisper)
+                    self._event.new_message(room, user, text, whisper)
             else:
                 message = "Unknown UID: {0} -> {1}".format(uid, msg["t"])
                 log.warning(message)
@@ -241,7 +250,10 @@ class ChatAPI:
 
     def _process_room_messages_from_json(self, json_data, room):
         """
-        Processes the new messages from JSON response for a specific room
+        Processes the new messages from JSON response for a specific room.
+
+        WARNING: Always call this method with _room_list_lock
+
         :param json_data: JSON
         :param room: Room
         """
@@ -254,7 +266,13 @@ class ChatAPI:
                 for msg in messages:
                     self._process_message(room, msg)
             else:
-                log.error("Failed to get new messages: " + json_data['statusMessage'])
+                error_message = json_data['statusMessage']
+                if error_message == "User in room NOT_FOUND":
+                    # You have been kicked from the room (automatically or intentionally?)
+                    self._event.kicked(room)
+                    self._remove_room(room)
+                else:
+                    log.error("Failed to get new messages: " + error_message)
 
     def get_user_by_name(self, nick):
         """
@@ -498,9 +516,12 @@ class ChatAPI:
         with self._room_list_lock:
             if self._is_logged_page(html):
                 # Remove room from the list
-                self._room_list = [r for r in self._room_list if r.id != room.id]
+                self._remove_room(room)
             else:
                 raise RoomError("Failed to leave the room: "+room.name)
+
+    def _remove_room(self, room):
+        self._room_list = [r for r in self._room_list if r.id != room.id]
 
     def whisper(self, to_user, text):
         """
@@ -555,7 +576,8 @@ class ChatAPI:
             raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
         else:
             # Process new messages, if any from the response
-            self._process_room_messages_from_json(json_data, room)
+            with self._room_list_lock:
+                self._process_room_messages_from_json(json_data, room)
 
 
 class UserProfile:
