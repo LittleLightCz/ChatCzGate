@@ -266,7 +266,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     room_name = to_ws(r.name)
                     self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.get_nick(), self.username, self.hostname, room_name, NEWLINE))
                     self.reply(332, "#%s :%s" % (room_name, r.description))
-                    users_in_room = ' '.join([to_ws(x.name) for x in r.user_list if x.name != self.get_nick()])
+                    users_in_room = ' '.join([to_ws(x.name) for x in r.user_list])
                     self.reply(353, "= #%s :%s %s" % (room_name, self.get_nick(), users_in_room))
                     self.reply(366, "#%s :End of /NAMES list." % room_name)
                 else:

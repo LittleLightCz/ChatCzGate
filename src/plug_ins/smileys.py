@@ -77,6 +77,7 @@ class Plugin:
             "Palec nahoru" : [606, 1042],
             "Pavouk" : [88],
             "Pěst z monitoru" : [804],
+            "Piju sám" : [401],
             "Pochva" : [758],
             "Pohlazení" : [838],
             "Poslouchá hudbu" : [682, 882],
