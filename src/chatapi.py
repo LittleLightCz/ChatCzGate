@@ -421,6 +421,10 @@ class ChatAPI:
             if div.div.h2.span:
                 profile.karma = div.div.h2.span.find("i", {"class": "fa-stack-1x"}).text
 
+            img_profile = div.find("img", {"title": "Profil"})
+            if img_profile:
+                profile.profile_image = CHAT_CZ_URL+img_profile["src"]
+
             profile.nick = div.div.h2.text.strip()
 
             text = div.div.text
@@ -593,6 +597,7 @@ class UserProfile:
         self.registration = ""
         self.last_seen = ""
         self.viewed = ""
+        self.profile_image = None
 
 
 class UserDb:
