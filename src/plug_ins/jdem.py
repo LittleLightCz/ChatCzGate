@@ -2,6 +2,7 @@ import re
 import logging
 import requests as req
 
+from tools import to_ws
 
 log = logging.getLogger("chat")
 
@@ -26,7 +27,7 @@ class Plugin:
             sender = channel
             channel = self.nick
 
-        return ":%s NOTICE %s :%s %s" % (sender, channel, text, "\n")
+        return ":%s NOTICE %s :%s %s" % (sender, to_ws(channel), text, "\n")
 
     def shorten(self, url, irc_command, data):
         """
@@ -39,7 +40,7 @@ class Plugin:
 
         # Parse channel
         channel = "ERROR"
-        m = re.match(r"PRIVMSG\s+(\S+)\s*:", irc_command, flags=re.DOTALL)
+        m = re.match(r"PRIVMSG\s+([^ ]+)\s*:", irc_command, flags=re.DOTALL)
         if m:
             channel = m.group(1)
             try:
@@ -83,4 +84,3 @@ class Plugin:
                 self.nick = m.group(1)
 
         return True
-

@@ -9,9 +9,9 @@ from chatapi import ChatAPI, ChatEvent
 from error import LoginError, MessageError
 from plugins import PluginData, Plugins
 from room import Gender
+from tools import *
 
 IRC_HOSTNAME = 'localhost'
-UNICODE_SPACE = u'\xa0'
 
 log = logging.getLogger("chat")
 
@@ -23,17 +23,6 @@ NEWLINE = "\r\n"
 VERSION = "1.0"
 
 IRC_PORT = config.getint("IRC Server", "port", fallback=6667)
-
-
-def to_ws(text):
-    """Convenience function for converting spaces into unicode whitespaces"""
-    return text.replace(' ', UNICODE_SPACE)
-
-
-def from_ws(text):
-    """Convenience function for converting unicode whitespaces into spaces"""
-    return text.replace(UNICODE_SPACE, ' ')
-
 
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
