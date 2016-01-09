@@ -43,14 +43,18 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             socket_file = self.request.makefile(mode="r", encoding=ENCODING)
             while True:  # TODO exit
                 line = socket_file.readline()
-                log.debug("RAW: %s" % line)
+                if line:
+                    log.debug("RAW: %s" % line)
 
-                data = self.plugins.process(PluginData(command=line))
-                for cmd in data.result_commands:
-                    self.parse_line(cmd)
+                    data = self.plugins.process(PluginData(command=line))
+                    for cmd in data.result_commands:
+                        self.parse_line(cmd)
 
-                for reply in data.result_replies:
-                    self.socket_send(reply)
+                    for reply in data.result_replies:
+                        self.socket_send(reply)
+                else:
+                    log.info("Received empty line! Closing the connection ...")
+                    break
 
         except Exception:
             log.exception("Exception during socket reading!")
