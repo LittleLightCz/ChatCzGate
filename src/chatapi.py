@@ -563,27 +563,26 @@ class ChatAPI:
         with self._room_list_lock:
             room = next((r for r in self._room_list if r.id == room.id), room)
 
-        # Create data
-        data = {
-            "roomId": room.id,
-            "chatIndex": room.chat_index,
-            "text": text,
-            "userIdTo": "0"
-        }
+            # Create data
+            data = {
+                "roomId": room.id,
+                "chatIndex": room.chat_index,
+                "text": text,
+                "userIdTo": "0"
+            }
 
-        log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
-        resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
-        self._cookies.update(resp.cookies)
+            log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
+            resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
+            self._cookies.update(resp.cookies)
 
-        # Server JSON response
-        json_data = resp.json()
+            # Server JSON response
+            json_data = resp.json()
 
-        if room.chat_index == json_data["data"]["index"]:
-            # Room's chat_index should be always different!
-            raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
-        else:
-            # Process new messages, if any from the response
-            with self._room_list_lock:
+            if room.chat_index == json_data["data"]["index"]:
+                # Room's chat_index should be always different!
+                raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
+            else:
+                # Process new messages, if any from the response
                 self._process_room_messages_from_json(json_data, room)
 
 

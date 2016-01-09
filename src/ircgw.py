@@ -11,7 +11,7 @@ from plugins import PluginData, Plugins
 from room import Gender
 from tools import *
 
-IRC_HOSTNAME = 'localhost'
+IRC_HOSTNAME = "localhost"
 
 log = logging.getLogger("chat")
 
@@ -32,7 +32,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.nickname = None
         self.username = None
         self.password = None
-        self.hostname = IRC_HOSTNAME
+        self.hostname = "chat.cz"
         self.plugins = Plugins()
         self._socket_lock = Lock()
         super().__init__(request, client_address, server)
