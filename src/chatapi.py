@@ -425,7 +425,10 @@ class ChatAPI:
             if img_profile:
                 profile.profile_image = CHAT_CZ_URL+img_profile["src"]
 
-            profile.nick = div.div.h2.text.strip()
+            if profile.karma:
+                profile.nick = re.sub(r"\d+\s*$","",div.div.h2.text).strip()
+            else:
+                profile.nick = div.div.h2.text.strip()
 
             text = div.div.text
             m = next(re.finditer(r"věk:\s*(.+)", text), None)

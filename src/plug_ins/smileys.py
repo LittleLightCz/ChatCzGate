@@ -43,6 +43,7 @@ class Plugin:
             "Haha" : [240, 242, 405, 931],
             "Hihi" : [470, 763],
             "Hlavou o zeď" : [103, 1058],
+            "Hledí" : [100],
             "Hm" : [9],
             "Hodný kluk" : [329],
             "Houslista" : [807],
