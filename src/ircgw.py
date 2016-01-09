@@ -162,8 +162,10 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         Website: https://github.com/LittleLightCz/ChatCzGate
         Credits: Svetylk0, Imrija
 
+        Loaded plugins: %s
+
         Have fun! :-)
-        ''' % VERSION
+        ''' % (VERSION, ",".join(self.plugins.get_loaded_plugins_names()))
 
         self.reply(1, welcome)
         self.reply(2, ":You're running version %s" % VERSION)

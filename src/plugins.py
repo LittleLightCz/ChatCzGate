@@ -62,3 +62,6 @@ class Plugins:
         # Verify results (in case nothing was processed)
         data.verify_results()
         return data
+
+    def get_loaded_plugins_names(self):
+        return [ p.name for p in self.plugins]

@@ -102,6 +102,7 @@ class Plugin:
             "Ty ty ty!" : [402],
             "Třese kozama!" : [235],
             "Utíká" : [86],
+            "Usíná" : [679],
             "Zdravím" : [1063],
             "Zívá" : [542, 69],
             "Znechucený" : [76, 197, 678, 677],
