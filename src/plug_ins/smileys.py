@@ -14,6 +14,7 @@ class Plugin:
     def __init__(self):
         self.smiley_url = "https://chat.cz/img/smile/%d.gif"
         self.name = "Smileys"
+        self.enabled = True
 
         self.smileys = {
             "8-)" : [7, 141],
@@ -31,6 +32,7 @@ class Plugin:
             "Baseballová pálka" : [],
             "BDSM bič" : [950],
             "Božské oko" : [980],
+            "Bubeník" : [428],
             "Bradavky" : [73],
             "Checheche" : [471, 83, 994, 716],
             "Chlastám" : [323],
@@ -48,7 +50,7 @@ class Plugin:
             "Haha" : [240, 242, 405, 931],
             "Hihi" : [470, 763],
             "Hlavou o zeď" : [103, 1058],
-            "Hledí" : [100],
+            "Hledí" : [100, 570],
             "Hm" : [9],
             "Hodný kluk" : [329],
             "Houslista" : [807],
@@ -80,6 +82,7 @@ class Plugin:
             "Nespěte!" : [938],
             "O_o" : [644],
             "Objímá" : [799, 67],
+            "Oči v sloup" : [642],
             "Olizuje bonbón" : [377],
             "Olíznutí" : [1014],
             "Orál" : [622, 974],
@@ -126,6 +129,7 @@ class Plugin:
             "Twerk" : [462],
             "Usíná" : [679],
             "Utíká" : [86],
+            "Vyplazuje jazyk" : [512],
             "Zdravím" : [1063],
             "Znechucený" : [76, 197, 678, 677],
             "Zvedá obočí" : [199, 414],

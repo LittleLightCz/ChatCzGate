@@ -33,7 +33,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.username = None
         self.password = None
         self.hostname = "chat.cz"
-        self.plugins = Plugins()
+        self.plugins = Plugins(config)
         self._socket_lock = Lock()
         super().__init__(request, client_address, server)
 
@@ -141,6 +141,9 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
     def send_welcome_message(self):
 
+        loaded = self.plugins.get_loaded_plugins_names()
+        disabled = self.plugins.get_disabled_plugins_names()
+
         welcome = ''':
           ____ _           _
          / ___| |__   __ _| |_   ___ ____
@@ -156,9 +159,10 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         Credits: Svetylk0, Imrija
 
         Loaded plugins: %s
+        Disabled plugins: %s
 
         Have fun! :-)
-        ''' % (VERSION, ",".join(self.plugins.get_loaded_plugins_names()))
+        ''' % (VERSION, ",".join(loaded), ",".join(disabled))
 
         self.reply(1, welcome)
         self.reply(2, ":You're running version %s" % VERSION)

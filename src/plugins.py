@@ -30,7 +30,7 @@ class PluginData:
 
 class Plugins:
 
-    def __init__(self, path="plug_ins"):
+    def __init__(self, config, path="plug_ins"):
         sys.path.append(path)
 
         self.plugins = []
@@ -42,7 +42,9 @@ class Plugins:
                     try:
                         module = __import__(match.group(1))
                         plugin_class = getattr(module, "Plugin")
-                        self.plugins.append(plugin_class())
+                        instance = plugin_class()
+                        instance.enabled = config.getboolean("Plugins", instance.name, fallback=False)
+                        self.plugins.append(instance)
                     except:
                         log.exception("File {0} doesn't contain class Plugin!".format(entry))
 
@@ -53,7 +55,8 @@ class Plugins:
             Data containing reply or command to be processed by the plug_ins
         """
         try:
-            for plugin in self.plugins:
+            enabled_plugins = (p for p in self.plugins if p.enabled)
+            for plugin in enabled_plugins:
                 if not plugin.process(data):
                     break
         except:
@@ -64,4 +67,7 @@ class Plugins:
         return data
 
     def get_loaded_plugins_names(self):
-        return [ p.name for p in self.plugins]
+        return [ p.name for p in self.plugins if p.enabled]
+
+    def get_disabled_plugins_names(self):
+        return [ p.name for p in self.plugins if not p.enabled]

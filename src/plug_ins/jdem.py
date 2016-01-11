@@ -18,6 +18,7 @@ class Plugin:
         self.jdem_url = "http://www.jdem.cz/get"
         self.name = "Jdem.cz"
         self.nick = None
+        self.enabled = True
 
     def get_notice_message(self, channel, text):
         sender = self.name
