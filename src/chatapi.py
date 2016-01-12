@@ -571,8 +571,6 @@ class ChatAPI:
 
         # Find our stored room in the list, or leave it as is
         with self._room_list_lock:
-            room = next((r for r in self._room_list if r.name == room.name), room)
-
             # Create data
             data = {
                 "roomId": room.id,

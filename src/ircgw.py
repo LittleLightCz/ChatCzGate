@@ -360,7 +360,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     user = from_ws(match.group(2))
                     reason = match.group(3)
 
-                    room = self.chatapi.get_room_by_name(room_name)
+                    room = self.chatapi.get_active_room_by_name(room_name)
                     if room:
                         self.chatapi.kick(room, user, reason)
                     else:
