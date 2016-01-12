@@ -545,6 +545,16 @@ class ChatAPI:
         else:
             raise MessageError("Failed to create a whisper message! There are no active rooms. Join the room first!")
 
+    def kick(self, room, user, reason):
+        """
+        Kicks user from the room
+
+        :param room: Room
+        :param user: string
+        :param reason: string
+        """
+        self.say(room, "/kick {0} {1}".format(user, reason))
+
     def say(self, room, text, to_user=None):
         """
         Sends text to the room
@@ -561,7 +571,7 @@ class ChatAPI:
 
         # Find our stored room in the list, or leave it as is
         with self._room_list_lock:
-            room = next((r for r in self._room_list if r.id == room.id), room)
+            room = next((r for r in self._room_list if r.name == room.name), room)
 
             # Create data
             data = {

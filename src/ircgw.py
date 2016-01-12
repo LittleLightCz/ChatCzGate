@@ -352,7 +352,23 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             pass  # TODO
 
         def kick_handler():
-            pass  # TODO
+            match = re.match(r"#(\S+)\s+(\S+)\s+:(.+)", args)
+
+            try:
+                if match:
+                    room_name = from_ws(match.group(1))
+                    user = from_ws(match.group(2))
+                    reason = match.group(3)
+
+                    room = self.chatapi.get_room_by_name(room_name)
+                    if room:
+                        self.chatapi.kick(room, user, reason)
+                    else:
+                        log.error("Failed to get room by name: "+room_name)
+            except:
+                msg = "Failed to kick user {0} from the room {1}!".format(user, room_name)
+                log.exception(msg)
+                self.reply_notice_all(msg)
 
         # Supported commands
         commands = {  # TODO other commands
