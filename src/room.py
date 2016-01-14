@@ -2,6 +2,8 @@ import logging
 from enum import Enum
 from threading import Lock
 
+import time
+
 log = logging.getLogger('chat')
 
 class Room:
@@ -17,6 +19,10 @@ class Room:
         self.user_list = []
         self.admin_list = []
         self.chat_index = ""
+
+        # Setup for idler
+        self.last_message = ""
+        self.timestamp = time.time()
 
         self.lock = Lock()
 

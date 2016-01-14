@@ -11,6 +11,7 @@ import schedule
 from bs4 import BeautifulSoup
 
 import js
+from tools import rotate
 from error import *
 from room import Room, User, Gender
 
@@ -146,6 +147,11 @@ class ChatAPI:
         self._scheduler_jobs.append(schedule.every(USERS_CHECK_INTERVAL).seconds.do(self._users_check))
         self._scheduler_jobs.append(schedule.every(MESSAGES_CHECK_INTERVAL).seconds.do(self._messages_check))
 
+        # Setup idler
+        self.idler_enabled = config.getboolean("Idler", "enabled", fallback=False)
+        self.idle_time = config.getint("Idler", "idle_seconds", fallback=1800)
+        self.idle_strings = config.get("Idler", "idle_strings", fallback=".,..").split(",")
+
     def _run_schedule_continuously(self):
         while self.logged:
             schedule.run_pending()
@@ -232,7 +238,10 @@ class ChatAPI:
         :param room: Room
         """
         try:
+            idler_rooms = []
+
             with self._room_list_lock:
+                idler_rooms = list(self._room_list)
                 for room in self._room_list:
                     data = {
                         "roomId": room.id,
@@ -245,6 +254,10 @@ class ChatAPI:
 
                     json_data = resp.json()
                     self._process_room_messages_from_json(json_data, room)
+
+            for room in idler_rooms:
+                # Trigger idler
+                self._idler_trigger(room)
         except:
             log.exception("Error during new messages check!")
 
@@ -334,6 +347,14 @@ class ChatAPI:
         rooms = [to_room(div) for div in divs]
         rooms.sort(key=lambda r: r.name)
 
+        # TEMPORARY, enrich rooms by their IDs -- DELETE after Chat api returns rooms also with users count
+        json_rooms = req.get("https://chat.cz/api/rooms").json()
+        for r in rooms:
+            for r_json in json_rooms["rooms"]:
+                if r.name == r_json["name"]:
+                    r.id = r_json["id"]
+                    break
+
         log.debug([r.name for r in rooms])
         return rooms
 
@@ -400,6 +421,27 @@ class ChatAPI:
         :return: Searched <li> tag or None
         """
         return html.find("li", {"id": "nav-user"})
+
+    def _get_idler_messgae(self, last_message):
+        """
+        :param last_message: string
+        :return: idler message that is not the same as last_message
+        """
+        self.idle_strings = rotate(self.idle_strings)
+        if self.idle_strings[0] == last_message:
+            self.idle_strings = rotate(self.idle_strings)
+
+        return self.idle_strings[0]
+
+    def _idler_trigger(self, room):
+        """
+        Triggers idler for given room.
+        :param room: Room
+        """
+        if time.time()-room.timestamp > self.idle_time:
+            msg = self._get_idler_messgae(room.last_message)
+            self.say(room, msg)
+            self._event.system_message(room, "IDLER: {0}".format(msg))
 
     def get_user_profile(self, nick):
         """
@@ -582,6 +624,9 @@ class ChatAPI:
             log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
             resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
             self._cookies.update(resp.cookies)
+
+            # Update room's timestamp
+            room.timestamp = time.time()
 
             # Server JSON response
             json_data = resp.json()

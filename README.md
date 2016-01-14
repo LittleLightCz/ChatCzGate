@@ -11,4 +11,7 @@ Dependencies:
 How to run the gate:
 --------------------
 This will be changed in the future, but for now just run:
+
 *$ python ircgw.py*
+
+
