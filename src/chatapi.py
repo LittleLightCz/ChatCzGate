@@ -438,7 +438,7 @@ class ChatAPI:
         Triggers idler for given room.
         :param room: Room
         """
-        if time.time()-room.timestamp > self.idle_time:
+        if self.idler_enabled and time.time()-room.timestamp > self.idle_time:
             msg = self._get_idler_messgae(room.last_message)
             self.say(room, msg)
             self._event.system_message(room, "IDLER: {0}".format(msg))
