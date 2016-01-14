@@ -627,6 +627,7 @@ class ChatAPI:
 
             # Update room's timestamp
             room.timestamp = time.time()
+            room.last_message = text
 
             # Server JSON response
             json_data = resp.json()
