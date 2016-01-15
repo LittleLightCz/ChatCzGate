@@ -128,6 +128,7 @@ class Plugin:
             "Svíčka" : [641],
             "Tleská" : [1044],
             "Tučňák se švihadlem" : [409],
+            "Tučňák" : [411],
             "Twerk" : [462],
             "Ty ty ty!" : [402],
             "Třese kozama!" : [235],
