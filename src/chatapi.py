@@ -573,6 +573,14 @@ class ChatAPI:
     def _remove_room(self, room):
         self._room_list = [r for r in self._room_list if r.id != room.id]
 
+    def admin(self, room, nick):
+        """
+        Adds admin rights to nick
+        :param room: Room
+        :param nick: string
+        """
+        self.say(room, "/admin "+nick)
+
     def whisper(self, to_user, text):
         """
         Whispers to the user

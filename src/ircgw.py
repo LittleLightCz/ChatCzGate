@@ -340,7 +340,16 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             pass  # TODO
 
         def mode_handler():
-            pass  # TODO
+            m = next(re.finditer(r"#([^ ]+) \+(\w+) (.+)", args), None)
+            if m:
+                room_name, modes, nick = m.groups()
+                room = self.chatapi.get_active_room_by_name(from_ws(room_name))
+
+                if room:
+                    if "o" in modes:
+                        self.chatapi.admin(room, from_ws(nick))
+                else:
+                    log.error("Failed to get room by name: "+room_name)
 
         def topic_handler():
             pass  # TODO
