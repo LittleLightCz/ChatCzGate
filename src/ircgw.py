@@ -144,6 +144,8 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         loaded = self.plugins.get_loaded_plugins_names()
         disabled = self.plugins.get_disabled_plugins_names()
 
+        disabled_plugins = "Disabled plugins: "+",".join(disabled) if disabled else ""
+
         welcome = ''':
           ____ _           _
          / ___| |__   __ _| |_   ___ ____
@@ -158,11 +160,16 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         Website: https://github.com/LittleLightCz/ChatCzGate
         Credits: Svetylk0, Imrija
 
+        Idler enabled: %s
+        Idler seconds: %d
+        Idler strings: %s
+
         Loaded plugins: %s
-        Disabled plugins: %s
+        %s
 
         Have fun! :-)
-        ''' % (VERSION, ",".join(loaded), ",".join(disabled))
+        ''' % (VERSION, self.chatapi.idler_enabled, self.chatapi.idle_time,
+               ",".join(self.chatapi.idle_strings), ",".join(loaded), disabled_plugins)
 
         self.reply(1, welcome)
         self.reply(2, ":You're running version %s" % VERSION)
