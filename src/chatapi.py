@@ -427,11 +427,12 @@ class ChatAPI:
         :param last_message: string
         :return: idler message that is not the same as last_message
         """
-        self.idle_strings = rotate(self.idle_strings)
         if self.idle_strings[0] == last_message:
             self.idle_strings = rotate(self.idle_strings)
 
-        return self.idle_strings[0]
+        msg = self.idle_strings[0]
+        self.idle_strings = rotate(self.idle_strings)
+        return msg
 
     def _idler_trigger(self, room):
         """
