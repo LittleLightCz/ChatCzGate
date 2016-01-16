@@ -3,7 +3,7 @@ import socketserver
 import sys
 
 from threading import Lock
-from chatapi import ChatAPI, ChatEvent
+from chatapi import ChatAPI, ChatEvent, UserDb
 from conf import config
 from error import LoginError, MessageError
 from logger import log
@@ -353,7 +353,12 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
                 if room:
                     if "o" in modes:
+                        last_admin_id = room.operator_id
                         self.chatapi.admin(room, from_ws(nick))
+                        # Now remove the half-operator from user, that was former half-operator
+                        user = UserDb.get_user_by_uid(last_admin_id)
+                        if user:
+                            self.reply_mode("#"+room_name, "-h", to_ws(user.name))
                 else:
                     log.error("Failed to get room by name: "+room_name)
 

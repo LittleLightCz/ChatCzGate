@@ -24,6 +24,7 @@ PROFILE_URL = CHAT_CZ_URL + "/p/"
 JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
 JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
 JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
+JSON_ROOM_INFO_URL = CHAT_CZ_URL + "/api/rooms/"
 JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
 
 MESSAGES_CHECK_INTERVAL = 5
@@ -176,7 +177,9 @@ class ChatAPI:
             elif msg["s"] == "admin":
                 # Send mode OP
                 user = UserDb.get_user_by_name(msg["nick"])
-                self._event.user_mode(room, user, "+h")
+                self._update_room_info(room)
+                if room.operator_id == user.id:
+                    self._event.user_mode(room, user, "+h")
             elif msg["s"] == "friend":
                 # ?? just add him to DB :-)
                 UserDb.add_user_from_json(msg)
@@ -488,13 +491,6 @@ class ChatAPI:
         self._cookies.update(resp.cookies)
 
         with room.lock:
-            id_match = re.search(r"/leaveRoom/(\d+)", resp.text)
-            if id_match:
-                room.id = id_match.group(1)
-                log.info("Room ID is: "+room.id)
-            else:
-                raise RoomError("Failed to get room ID!")
-
             # Get users in the room
             match = re.search(r"var userList\s*=\s*({[\s\S]+?});", resp.text)
             if match:
@@ -613,6 +609,15 @@ class ChatAPI:
             else:
                 # Process new messages, if any from the response
                 self._process_room_messages_from_json(json_data, room)
+
+    def _update_room_info(self, room):
+        """
+        Updates room info
+        :param room: Room
+        """
+        json = req.get(JSON_ROOM_INFO_URL+str(room.id)).json()
+        room.description = json["room"]["description"]
+        room.operator_id = json["room"]["adminUserId"]
 
 
 class UserProfile:
