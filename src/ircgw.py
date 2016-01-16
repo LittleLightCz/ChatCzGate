@@ -196,6 +196,10 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         if user.name in room.admin_list:
             self.reply_mode(channel, "+o", nick)
 
+        # Mark half-operator
+        if user.id == room.operator_id:
+            self.reply_mode(channel, "+h", nick)
+
         # Mark room admin
         if user.admin:
             self.reply_mode(channel, "+A", nick)
