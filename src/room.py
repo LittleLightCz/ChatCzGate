@@ -10,13 +10,14 @@ class Room:
     """
     Data holder class for room information
     """
-    def __init__(self, name, description, users_count):
+    def __init__(self, id, name, description, users_count):
         # Let's have ID as a string for the ease of further manipulation
-        self.id = "-1"
+        self.id = id
         self.name = name
         self.description = description
         self.users_count = users_count
         self.user_list = []
+        self.operator_id = "-1"
         self.admin_list = []
         self.chat_index = ""
 

@@ -24,6 +24,7 @@ PROFILE_URL = CHAT_CZ_URL + "/p/"
 JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
 JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
 JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
+JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
 
 MESSAGES_CHECK_INTERVAL = 5
 USERS_CHECK_INTERVAL = 50
@@ -304,26 +305,21 @@ class ChatAPI:
         Returns the list of all rooms on the server sorted by name. Data are held in the class Room.
         """
         log.info("Downloading room list ...")
-        resp = req.get(CHAT_CZ_URL)
-        html = BeautifulSoup(resp.text, "html.parser")
 
-        def to_room(div):
-            name = div.a.h4.text.strip()
-            description = re.sub(r"[\s\S]+?\n\n", "", div.a.text).strip()
-            users_count = len(div.div.find_all("span"))
-            return Room(name, description, users_count)
+        def to_room(json):
+            id = json["id"]
+            name = json["name"]
+            description = json["description"]
+            users_count = json["userCount"]
 
-        divs = html.find_all("div", "row row-xs-height list-group")
-        rooms = [to_room(div) for div in divs]
+            room = Room(id, name, description, users_count)
+            room.operator_id = json["adminUserId"]
+            return room
+
+        json_rooms = req.get(JSON_ROOMS_LIST_URL).json()
+
+        rooms = [to_room(j) for j in json_rooms["rooms"]]
         rooms.sort(key=lambda r: r.name)
-
-        # TEMPORARY, enrich rooms by their IDs -- DELETE after Chat api returns rooms also with users count
-        json_rooms = req.get("https://chat.cz/api/rooms").json()
-        for r in rooms:
-            for r_json in json_rooms["rooms"]:
-                if r.name == r_json["name"]:
-                    r.id = r_json["id"]
-                    break
 
         log.debug([r.name for r in rooms])
         return rooms

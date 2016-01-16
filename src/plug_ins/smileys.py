@@ -148,6 +148,7 @@ class Plugin:
             "Čtyřlístek" : [227],
             "Šibenice" : [965],
             "Žárovka" : [163],
+            "Žirafa" : [457],
         }
 
     def find_repl(self, num):
