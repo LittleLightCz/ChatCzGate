@@ -1,7 +1,5 @@
-import configparser
 import html
 import json
-import logging
 import re
 import threading
 import time
@@ -11,6 +9,8 @@ import schedule
 from bs4 import BeautifulSoup
 
 import js
+from conf import config
+from logger import log
 from tools import rotate
 from error import *
 from room import Room, User, Gender
@@ -27,36 +27,6 @@ JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
 
 MESSAGES_CHECK_INTERVAL = 5
 USERS_CHECK_INTERVAL = 50
-
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-
-
-# -------------------------------------------------------------------------------
-# Temporary logger init ... will be moved to main script file afterwards ...
-
-LOGGER_FORMAT = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-
-# Init logger
-log = logging.getLogger('chat')
-log.setLevel(config.get("Global", "loglevel", fallback="INFO")) # or whatever
-handler = logging.FileHandler('log.txt', 'a', 'utf-8') # or whatever
-handler.setFormatter = logging.Formatter('%(name)s %(message)s') # or whatever
-log.addHandler(handler)
-
-# define a Handler which writes INFO messages or higher to the sys.stderr
-console = logging.StreamHandler()
-console.setLevel(logging.DEBUG)
-# set a format which is simpler for console use
-formatter = logging.Formatter(LOGGER_FORMAT)
-# tell the handler to use this format
-console.setFormatter(formatter)
-# add the handler to the root logger
-
-log.addHandler(console)
-
-# -------------------------------------------------------------------------------
 
 
 class ChatEvent:

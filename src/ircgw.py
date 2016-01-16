@@ -1,22 +1,17 @@
-import configparser
-import logging
 import re
 import socketserver
 import sys
 
 from threading import Lock
 from chatapi import ChatAPI, ChatEvent
+from conf import config
 from error import LoginError, MessageError
+from logger import log
 from plugins import PluginData, Plugins
 from room import Gender
 from tools import *
 
 IRC_HOSTNAME = "localhost"
-
-log = logging.getLogger("chat")
-
-config = configparser.ConfigParser()
-config.read('config.ini')
 
 ENCODING = "UTF-8"
 NEWLINE = "\r\n"

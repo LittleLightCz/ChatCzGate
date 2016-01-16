@@ -2,9 +2,7 @@ import os
 import re
 import sys
 
-import logging
-
-log = logging.getLogger("chat")
+from logger import log
 
 
 class PluginData:
@@ -67,7 +65,7 @@ class Plugins:
         return data
 
     def get_loaded_plugins_names(self):
-        return [ p.name for p in self.plugins if p.enabled]
+        return [p.name for p in self.plugins if p.enabled]
 
     def get_disabled_plugins_names(self):
-        return [ p.name for p in self.plugins if not p.enabled]
+        return [p.name for p in self.plugins if not p.enabled]

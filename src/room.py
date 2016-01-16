@@ -1,10 +1,10 @@
-import logging
 from enum import Enum
 from threading import Lock
 
 import time
 
-log = logging.getLogger('chat')
+from logger import log
+
 
 class Room:
     """
@@ -90,4 +90,3 @@ class Gender(Enum):
     """Enum for gender"""
     MALE = "m"
     FEMALE = "f"
-

@@ -10,7 +10,7 @@ Dependencies:
 
 How to run the gate:
 --------------------
-This will be changed in the future, but for now just run:
+Use the *ChatCzGate.bat* file when on Windows. On Linux just run:
 
 *$ python ircgw.py*
 

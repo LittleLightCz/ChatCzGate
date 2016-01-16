@@ -1,10 +1,9 @@
 import re
-import logging
 import requests as req
 
+from logger import log
 from tools import to_ws
 
-log = logging.getLogger("chat")
 
 class Plugin:
     """

@@ -1,7 +1,7 @@
 import demjson
-import logging
 
-log = logging.getLogger("chat")
+from logger import log
+
 
 def to_py_json(js_str):
     """

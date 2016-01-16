@@ -1,7 +1,7 @@
 import re
-import logging
 
-log = logging.getLogger("chat")
+from logger import log
+
 
 class Plugin:
     """
