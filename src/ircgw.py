@@ -449,6 +449,10 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 Main launch script
 """
 
+# Check for Python version
+if sys.version_info < (3,0):
+    exit("You need Python 3.x to run this application!")
+
 t = ThreadedTCPServer((IRC_HOSTNAME, IRC_PORT), IRCServer)  # TODO hostname from config
 
 try:
