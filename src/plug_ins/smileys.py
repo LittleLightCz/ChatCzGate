@@ -47,7 +47,7 @@ class Plugin:
             "Fuck you!" : [244, 251],
             "Garfield" : [277],
             "Haha" : [240, 242, 405, 931],
-            "Hehe" : [246],
+            "Hehe" : [246, 737],
             "Hihi" : [470, 763],
             "Hlavou o zeď" : [103, 1058],
             "Hledí" : [100, 570],
