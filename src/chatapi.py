@@ -24,7 +24,7 @@ PROFILE_URL = CHAT_CZ_URL + "/p/"
 JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
 JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
 JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
-JSON_ROOM_INFO_URL = CHAT_CZ_URL + "/api/rooms/"
+JSON_ROOM_INFO_URL = CHAT_CZ_URL + "/api/room/"
 JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
 
 MESSAGES_CHECK_INTERVAL = 5
