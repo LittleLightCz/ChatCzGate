@@ -18,7 +18,7 @@ from room import Room, User, Gender
 CHAT_CZ_URL = "https://chat.cz"
 LOGIN_URL = CHAT_CZ_URL + "/login"
 LOGOUT_URL = CHAT_CZ_URL + "/logout"
-LEAVE_ROOM_URL = CHAT_CZ_URL + "/leaveRoom/"
+LEAVE_ROOM_URL = CHAT_CZ_URL + "/leaveRoom/%d"
 PROFILE_URL = CHAT_CZ_URL + "/p/"
 
 JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
@@ -521,7 +521,7 @@ class ChatAPI:
         :param room: Room
         """
         log.info("Leaving the room: "+room.name)
-        resp = req.get(LEAVE_ROOM_URL + room.id, headers=self._headers, cookies=self._cookies)
+        resp = req.get(LEAVE_ROOM_URL % room.id, headers=self._headers, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
         html = BeautifulSoup(resp.text, "html.parser")
