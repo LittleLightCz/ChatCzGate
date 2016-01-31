@@ -1,4 +1,7 @@
+import logging
 import re
+
+import time
 
 from logger import log
 
@@ -15,6 +18,9 @@ class Plugin:
         self.smiley_url = "https://chat.cz/img/smile/%d.gif"
         self.name = "Smileys"
         self.enabled = True
+
+        self.unknown_smileys = set()
+        self.unknown_html_file = time.strftime("%Y-%m-%d_%Hh%Mm%Ss-unknown.html")
 
         self.smileys = {
             "8-)" : [7, 141],
@@ -68,6 +74,7 @@ class Plugin:
             "Klove do země" : [1023],
             "Kmitající jazyk" : [990],
             "Kobra" : [82],
+            "Kočka" : [79],
             "Koulí očima" : [631, 860, 683],
             "Kozy ven" : [232],
             "Kroutí hlavou" : [861, 1055],
@@ -157,6 +164,29 @@ class Plugin:
             "Žárovka" : [163],
         }
 
+    def dump_unknown_smiley(self, num):
+        self.unknown_smileys.add(num)
+        extensions = ["gif", "bmp", "png", "jpg"]
+
+        def create_element(n):
+            image_tags = ('<img src="https://chat.cz/img/smile/{0}.{1}" />'.format(n, ext) for ext in extensions)
+            return "{0} - {1} </br>".format(n, "".join(image_tags))
+
+        elements = [ create_element(n) for n in self.unknown_smileys]
+
+        html = '''
+        <html>
+        <body>
+        {0}
+        </body>
+        </html>
+        '''.format("".join(elements))
+
+        with open(self.unknown_html_file, "w", encoding="UTF-8") as f:
+            f.write(html)
+
+        log.debug("Unknown smileys list dumped into HTML file: "+self.unknown_html_file)
+
     def find_repl(self, num):
         """
         Finds smiley replacement
@@ -169,6 +199,8 @@ class Plugin:
                 return repl
 
         log.warning("Unknown smiley: " + self.smiley_url % num)
+        if log.getEffectiveLevel() == logging.DEBUG:
+            self.dump_unknown_smiley(num)
         return str(num)
 
     def process(self, data):
