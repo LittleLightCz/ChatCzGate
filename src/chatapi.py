@@ -28,6 +28,7 @@ JSON_ROOM_INFO_URL = CHAT_CZ_URL + "/api/room/"
 JSON_ROOM_ADMIN_LIST_URL = CHAT_CZ_URL + "/api/room/%d/admins"
 JSON_ROOM_USER_LIST_URL = CHAT_CZ_URL + "/api/room/%d/users"
 JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
+JSON_USER_LOOKUP_URL = CHAT_CZ_URL + "/api/user/%d"
 
 MESSAGES_CHECK_INTERVAL = 5
 USERS_CHECK_INTERVAL = 50
@@ -167,8 +168,6 @@ class ChatAPI:
                 user = room.get_user_by_id(msg["uid"])
                 if user:
                     room.remove_user(user)
-                    # Add user to DB
-                    UserDb.add_user(user)
                     self._event.user_left(room, user)
             elif msg["s"] == "cli":
                 # Send system notice
@@ -191,7 +190,7 @@ class ChatAPI:
         else:
             # Standard chat message
             uid = msg["uid"]
-            user = room.get_user_by_id(uid) or UserDb.get_user_by_uid(uid)
+            user = UserDb.get_user_by_uid(uid)
             if user:
                 # Ignore messages from users that are not in the room?
                 whisper = "w" in msg
@@ -656,8 +655,18 @@ class UserDb:
         :param uid: int
         :return: User or None
         """
+        user = None
         with cls._lock:
-            return next((u for u in cls._users if u.id == uid), None)
+            user = next((u for u in cls._users if u.id == uid), None)
+
+        # If user was not found, try to fetch the data from REST API
+        if not user:
+            data = req.get(JSON_USER_LOOKUP_URL % uid).json()
+            if "user" in data:
+                user = User(data["user"])
+                cls.add_user(user)
+
+        return user
 
     @classmethod
     def add_user(cls, user):
