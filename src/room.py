@@ -78,7 +78,12 @@ class User:
         self.id = int(data.get("id") or data.get("uid") or -1)
         self.name = data.get("nick", "")
         self.gender = Gender(data.get("sex", "m"))
-        self.anonymous = bool(data.get("anonymous", True))
+
+        if "anonymous" in data:
+            self.anonymous = bool(data["anonymous"])
+        else:
+            self.anonymous = bool(data.get("anonym", True))
+
         self.idle = int(data.get("interval_idle", 0))
         self.admin = int(data.get("roomAdmin", 0))
         self.karma = data.get("karmaLevel", "")

@@ -25,6 +25,8 @@ JSON_HEADER_URL = CHAT_CZ_URL + "/json/getHeader"
 JSON_TEXT_URL = CHAT_CZ_URL + "/json/getText"
 JSON_ROOM_USER_TIME_URL = CHAT_CZ_URL + "/json/getRoomUserTime"
 JSON_ROOM_INFO_URL = CHAT_CZ_URL + "/api/room/"
+JSON_ROOM_ADMIN_LIST_URL = CHAT_CZ_URL + "/api/room/%d/admins"
+JSON_ROOM_USER_LIST_URL = CHAT_CZ_URL + "/api/room/%d/users"
 JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
 
 MESSAGES_CHECK_INTERVAL = 5
@@ -492,21 +494,14 @@ class ChatAPI:
 
         with room.lock:
             # Get users in the room
-            match = re.search(r"var userList\s*=\s*({[\s\S]+?});", resp.text)
-            if match:
-                data = js.to_py_json(match.group(1))["data"]
-                room.user_list = [User(val) for key,val in data.items()]
-                UserDb.add_users(room.user_list)
-            else:
-                raise RoomError("Failed to get user list for the room: "+room)
+            log.debug("Getting user list for room: {0}".format(room.name))
+            resp = req.get(JSON_ROOM_USER_LIST_URL % room.id)
+            room.user_list = [User(user) for user in resp.json()["users"]]
 
             # Get admin list (not mandatory)
-            match = re.search(r"adminList:\s*(\{.*?\})", resp.text)
-            if match:
-                data = js.to_py_json(match.group(1))
-                room.admin_list = [val for key,val in data.items()]
-            else:
-                log.warning("Failed to parse Admin list of the room: "+room.name)
+            log.debug("Getting admin list for room: {0}".format(room.name))
+            resp = req.get(JSON_ROOM_ADMIN_LIST_URL % room.id)
+            room.admin_list = [user["nick"] for user in resp.json()["admins"]]
 
         # Add room to the list
         with self._room_list_lock:
