@@ -328,17 +328,29 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                 profile = self.chatapi.get_user_profile(nick)
                 if profile:
                     self.reply_notice_all("=== WHOIS Profile ===")
+                    self.reply_notice_all("Anonym: {0}".format(profile.anonymous))
                     self.reply_notice_all("Nick: {0}".format(profile.nick))
-                    self.reply_notice_all("Věk: {0}".format(profile.age))
-                    self.reply_notice_all("Karma: {0}".format(profile.karma))
-                    self.reply_notice_all("Registrace: {0}".format(profile.registration))
-                    self.reply_notice_all("Naposledy: {0}".format(profile.last_seen))
-                    self.reply_notice_all("Profil zobrazen: {0}".format(profile.viewed))
+
+                    if profile.age:
+                        self.reply_notice_all("Věk: {0}".format(profile.age))
+
+                    self.reply_notice_all("Pohlaví: {0}".format(profile.gender.value))
+                    # self.reply_notice_all("Karma: {0}".format(profile.karma))
+                    # self.reply_notice_all("Registrace: {0}".format(profile.registration))
+                    # self.reply_notice_all("Naposledy: {0}".format(profile.last_seen))
+
+                    if profile.viewed:
+                        self.reply_notice_all("Profil zobrazen: {0}x".format(profile.viewed))
 
                     if profile.profile_image:
                         self.reply_notice_all("Profilovka: {0}".format(profile.profile_image))
 
                     self.reply_notice_all("Online: {0}".format(profile.online))
+
+                    if profile.rooms:
+                        channels = [to_ws("#"+room) for room in profile.rooms]
+                        self.reply_notice_all("Chatuje v: {0}".format(", ".join(channels)))
+
                     self.reply_notice_all("=== End Of WHOIS Profile ===")
                 else:
                     self.reply_notice_all("WHOIS: Failed to get profile of: %s" % to_ws(nick))

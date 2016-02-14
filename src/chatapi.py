@@ -8,7 +8,6 @@ import requests as req
 import schedule
 from bs4 import BeautifulSoup
 
-import js
 from conf import config
 from logger import log
 from tools import rotate
@@ -29,6 +28,7 @@ JSON_ROOM_ADMIN_LIST_URL = CHAT_CZ_URL + "/api/room/%d/admins"
 JSON_ROOM_USER_LIST_URL = CHAT_CZ_URL + "/api/room/%d/users"
 JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
 JSON_USER_LOOKUP_URL = CHAT_CZ_URL + "/api/user/%d"
+JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
 
 MESSAGES_CHECK_INTERVAL = 5
 USERS_CHECK_INTERVAL = 50
@@ -421,49 +421,34 @@ class ChatAPI:
         :return: UserProfile
         """
 
-        resp = req.get(PROFILE_URL+nick, headers=self._headers)
+        user = self.get_user_by_name(nick)
 
-        html = BeautifulSoup(resp.text, "html.parser")
-
-        div = html.find("div", {"id": "userInfo"})
-
-        if div:
+        if user:
             profile = UserProfile()
-            profile.online = bool(div.div.h2.find("i", {"title": "online"}))
 
-            if div.div.h2.span:
-                profile.karma = div.div.h2.span.find("i", {"class": "fa-stack-1x"}).text
+            # User lookup data
+            data = req.get(JSON_USER_LOOKUP_URL % user.id).json()
+            if "user" in data:
+                d = data["user"]
+                profile.anonymous = d["anonym"]
+                profile.nick = d["nick"]
+                profile.online = d["online"]
+                profile.gender = Gender(d["sex"])
 
-            img_profile = div.find("img", {"title": "Profil"})
-            if img_profile:
-                profile.profile_image = CHAT_CZ_URL+img_profile["src"]
+            if "rooms" in data:
+                profile.rooms = [r["name"] for r in data["rooms"]]
 
-            if profile.karma:
-                profile.nick = re.sub(r"\d+\s*$","",div.div.h2.text).strip()
-            else:
-                profile.nick = div.div.h2.text.strip()
-
-            text = div.div.text
-            m = next(re.finditer(r"věk:\s*(.+)", text), None)
-            if m:
-                profile.age = m.group(1).strip()
-
-            m = next(re.finditer(r"registrace:\s*(.+)", text), None)
-            if m:
-                profile.registration = m.group(1).strip()
-
-            m = next(re.finditer(r"naposledy:\s*(.+)", text), None)
-            if m:
-                profile.last_seen = m.group(1).strip()
-
-            m = next(re.finditer(r"profil zobrazen:\s*(.+)", text), None)
-            if m:
-                profile.viewed = m.group(1).strip()
+            # User profile data
+            data = req.get(JSON_USER_PROFILE_URL % user.id).json()
+            if "profile" in data:
+                p = data["profile"]
+                profile.age = p["age"]
+                profile.profile_image = p.get("imageUrl")
+                profile.viewed = p["profileViewCount"]
 
             return profile
         else:
             return None
-
 
     def logout(self):
         """
@@ -621,13 +606,15 @@ class UserProfile:
 
     def __init__(self):
         self.online = False
-        self.karma = ""
         self.nick = ""
         self.age = ""
-        self.registration = ""
-        self.last_seen = ""
+        self.anonymous = True
+        self.gender = Gender.MALE
+        # self.registration = ""
+        # self.last_seen = ""
         self.viewed = ""
         self.profile_image = None
+        self.rooms = None
 
 
 class UserDb:
