@@ -334,7 +334,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     if profile.age:
                         self.reply_notice_all("Věk: {0}".format(profile.age))
 
-                    self.reply_notice_all("Pohlaví: {0}".format(profile.gender.value))
+                    self.reply_notice_all("Pohlaví: {0}".format(profile.gender.name.title()))
                     # self.reply_notice_all("Karma: {0}".format(profile.karma))
                     # self.reply_notice_all("Registrace: {0}".format(profile.registration))
                     # self.reply_notice_all("Naposledy: {0}".format(profile.last_seen))
