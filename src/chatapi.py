@@ -663,7 +663,7 @@ class UserDb:
         """
         u = cls.get_user_by_name(user.name)
         with cls._lock:
-            if not u:
+            if not u and user.name:
                 log.debug("UserDb: Adding user {0} ({1})".format(user.name, user.id))
                 cls._users.append(user)
 
