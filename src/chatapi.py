@@ -3,11 +3,11 @@ import json
 import re
 import threading
 import time
-
-import requests as req
 import schedule
-from bs4 import BeautifulSoup
+import urllib.parse
+import requests as req
 
+from bs4 import BeautifulSoup
 from conf import config
 from logger import log
 from tools import rotate
@@ -434,6 +434,7 @@ class ChatAPI:
                 profile.nick = d["nick"]
                 profile.online = d["online"]
                 profile.gender = Gender(d["sex"])
+                profile.profile_url = PROFILE_URL + urllib.parse.quote(profile.nick)
 
             if "rooms" in data:
                 profile.rooms = [r["name"] for r in data["rooms"]]
@@ -614,6 +615,7 @@ class UserProfile:
         # self.last_seen = ""
         self.viewed = ""
         self.profile_image = None
+        self.profile_url = None
         self.rooms = None
 
 
