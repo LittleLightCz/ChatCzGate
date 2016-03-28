@@ -17,16 +17,17 @@ size_limit = 10000000
 if not os.path.exists(logs_backup_dir):
     os.mkdir(logs_backup_dir)
 
-size = os.path.getsize(log_file)
-if size > size_limit:
-    print("Log file size is: {0} bytes. Moving it to the backup folder ...".format(size))
-    zip_name = time.strftime("%Y-%m-%d_%Hh%Mm%Ss-log.zip")
-    z = zipfile.ZipFile(os.path.join(logs_backup_dir, zip_name), "w", zipfile.ZIP_LZMA)
-    z.write(log_file)
-    z.close()
+if os.path.exists(log_file):
+    size = os.path.getsize(log_file)
+    if size > size_limit:
+        print("Log file size is: {0} bytes. Moving it to the backup folder ...".format(size))
+        zip_name = time.strftime("%Y-%m-%d_%Hh%Mm%Ss-log.zip")
+        z = zipfile.ZipFile(os.path.join(logs_backup_dir, zip_name), "w", zipfile.ZIP_LZMA)
+        z.write(log_file)
+        z.close()
 
-    #remove the log file
-    os.remove(log_file)
+        #remove the log file
+        os.remove(log_file)
 
 
 """
