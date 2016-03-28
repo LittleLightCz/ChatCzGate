@@ -1,6 +1,13 @@
+from __future__ import print_function
+import sys
+
+# Check for Python version
+if sys.version_info < (3,0):
+    print("You need Python 3.x to run this application!")
+    exit(0)
+
 import re
 import socketserver
-import sys
 
 from threading import Lock
 from chatapi import ChatAPI, ChatEvent, UserDb
@@ -475,10 +482,6 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 """
 Main launch script
 """
-
-# Check for Python version
-if sys.version_info < (3,0):
-    exit("You need Python 3.x to run this application!")
 
 t = ThreadedTCPServer((IRC_HOSTNAME, IRC_PORT), IRCServer)  # TODO hostname from config
 
