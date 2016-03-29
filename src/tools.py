@@ -1,4 +1,4 @@
-UNICODE_SPACE = u'\xa0'
+UNICODE_SPACE = '\xa0'
 
 def to_ws(text):
     """Convenience function for converting spaces into unicode whitespaces"""
