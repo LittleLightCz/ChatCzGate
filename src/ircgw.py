@@ -324,8 +324,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
             self.chatapi.logout()
 
         def ping_handler():
-            lag_number = args[3:]
-            pong = ":%s PONG %s :%s %s" % (self.hostname, self.hostname, lag_number, NEWLINE)
+            pong = ":%s PONG %s :%s %s" % (self.hostname, self.hostname, args, NEWLINE)
             self.socket_send(pong)
 
         def whois_handler():
