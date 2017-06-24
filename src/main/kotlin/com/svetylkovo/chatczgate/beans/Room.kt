@@ -14,10 +14,10 @@ data class Room
         var lastMessage: String = "",
         var timestamp: Long = Date().time
 ) {
-    private var users = mutableListOf<User>()
+    private var users = ArrayList<User>()
 
     fun hasUser(user: User): Boolean {
-        return findUser(user) != null
+        return users.find { it.id == user.id } != null
     }
 
     fun addUser(user: User) {
@@ -25,12 +25,7 @@ data class Room
     }
 
     fun removeUser(user: User) {
-        val foundUser = findUser(user)
-        users.remove(foundUser)
+        users.removeIf { it.id == user.id }
     }
-
-    private fun findUser(user: User) = findUserById(user.id)
-
-    private fun findUserById(id: Int) = users.find { it.id == id }
 
 }
