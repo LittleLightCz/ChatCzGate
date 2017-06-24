@@ -28,4 +28,6 @@ data class Room
         users.removeIf { it.id == user.id }
     }
 
+    fun getUserByName(name: String) = users.find { it.name == name }
+
 }

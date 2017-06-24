@@ -15,7 +15,7 @@ object UsersCache {
     private val service = ChatService.obtain()
 
     @Synchronized
-    fun getByNick(name: String) = users.find { it.name == name }
+    fun getByName(name: String) = users.find { it.name == name }
 
     @Synchronized
     fun getById(id: Int): User? {

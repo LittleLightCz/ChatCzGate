@@ -1,8 +1,13 @@
 package com.svetylkovo.chatczgate.api
 
-import com.svetylkovo.chatczgate.beans.Room
+import com.svetylkovo.chatczgate.beans.*
+import com.svetylkovo.chatczgate.cache.UsersCache
 import com.svetylkovo.chatczgate.events.ChatEvent
 import com.svetylkovo.chatczgate.service.ChatService
+import com.svetylkovo.rojo.Rojo
+import okhttp3.ResponseBody
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -23,7 +28,7 @@ class ChatApi(val handler: ChatEvent) {
     private var loggedIn = false
     private var idlerEnabled = false
     private var idleTime = 1800
-    private var idleString = listOf(".", "..")
+    private var idleStrings = listOf(".", "..")
 
     init {
         log.info("Getting cookies ...")
@@ -50,11 +55,87 @@ class ChatApi(val handler: ChatEvent) {
         }
     }
 
+    @Synchronized
     private fun messagesCheck() {
+        try {
+            for(room in rooms) {
+                log.debug("Checking for new messages in: ${room.name}")
+                val response = service.getRoomText(room)
+                processMessages(response)
+                triggerIdler(room)
+            }
+        } catch (t: Throwable) {
+            log.error("Error during new messages check!", t)
+        }
     }
+
+    @Synchronized
+    fun getUserByName(name: String): User? {
+        return rooms.map { it.getUserByName(name) }
+                    .filterNotNull()
+                    .firstOrNull()
+                ?: UsersCache.getByName(name)
+    }
+
+    @Synchronized
+    fun getRoomByName(name: String): Room? = getRooms().find { it.name == name }
+
+    @Synchronized
+    fun getActiveRoomByName(name: String): Room? = rooms.find { it.name == name }
+
+    @Synchronized
+    fun getActiveRoomNames(): List<String> = rooms.map { it.name }
+
+    fun getRoomList(): List<Room> {
+        log.info("Downloading room list ...")
+        return service.getRoomList().sortedBy { it.name }
+    }
+
+    fun login(user: String, password: String) {
+        log.info("Logging as: $user")
+        val response = service.login(Login(user, password))
+        loginCheck(response)
+    }
+
+    fun loginAnonymously(user: String, gender: Gender) {
+        log.info("Logging anonymously as: $user (${gender.value})")
+        val response = service.loginAnonymously(AnonymousLogin(user, gender.value))
+        loginCheck(response)
+    }
+
+    private fun loginCheck(resp: ResponseBody) {
+        val html = Jsoup.parse(resp.string())
+        val alert = html.select("div[class=alert]")
+                        .firstOrNull()
+
+        loggedIn = false
+
+        if (isLoggedPage(html)) {
+            log.info("Login successful!")
+            loggedIn = true
+        } else if (alert != null) {
+            throw RuntimeException(alert.text().trim())
+        } else throw RuntimeException("Failed to login for unknown reason.")
+    }
+
+    private fun isLoggedPage(html: Document): Boolean {
+        return html.select("li#nav-user").first() != null
+    }
+
+    private fun  triggerIdler(room: Room) {
+    }
+
+    private fun processMessages(response: String) {
+
+    }
+
+    private fun getIdlerMessage(lastMessage: String) =
+            idleStrings.filter { it != lastMessage }.firstOrNull()
+            ?: "..."
 
 
 }
+
 
 /*
 
@@ -73,13 +154,6 @@ JSON_ROOM_USER_LIST_URL = CHAT_CZ_URL + "/api/room/%d/users"
 JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
 JSON_USER_LOOKUP_URL = CHAT_CZ_URL + "/api/user/%d"
 JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
-
-class ChatAPI:
-    """
-    Class that enables access to chat.cz
-    """
-
-
 
 
 
@@ -142,34 +216,6 @@ class ChatAPI:
                 log.warning(message)
                 self._event.system_message(room, "WARNING: "+message)
 
-    def _messages_check(self):
-        """
-        Checks for new messages and triggers appropriate event
-        :param room: Room
-        """
-        try:
-            idler_rooms = []
-
-            with self._room_list_lock:
-                idler_rooms = list(self._room_list)
-                for room in self._room_list:
-                    data = {
-                        "roomId": room.id,
-                        "chatIndex": room.chat_index,
-                    }
-
-                    log.debug("Checking for new messages in: "+room.name)
-                    resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
-                    self._cookies.update(resp.cookies)
-
-                    json_data = resp.json()
-                    self._process_room_messages_from_json(json_data, room)
-
-            for room in idler_rooms:
-                # Trigger idler
-                self._idler_trigger(room)
-        except:
-            log.exception("Error during new messages check!")
 
     def _process_room_messages_from_json(self, json_data, room):
         """
@@ -197,147 +243,8 @@ class ChatAPI:
                 else:
                     log.error("Failed to get new messages: " + error_message)
 
-    def get_user_by_name(self, nick):
-        """
-        Searches all rooms for a User by its nickname. If this search fails, it will try to search
-        in shared UserDb.
-        :param nick: string
-            User's nickname
-        :return: User instance or None if no User was found
-        """
-        # First search all active rooms
-        with self._room_list_lock:
-            for room in self._room_list:
-                for user in room.user_list:
-                    if user.name == nick:
-                        return user
 
-        # If previous search failed, search the UserDb
-        return UserDb.get_user_by_name(nick)
 
-    def get_room_by_name(self, name):
-        """
-        Downloads full room list from server and returns room instance by its name
-        :param name: string
-        :return: Room instance
-        """
-        return next((r for r in self.get_room_list() if r.name == name), None)
-
-    def get_active_room_names(self):
-        """
-        Returns list of active room names
-        :return: List of strings
-        """
-        with self._room_list_lock:
-            return [r.name for r in self._room_list]
-
-    def get_active_room_by_name(self, name):
-        """
-        Returns room instance from internal _room_list by its name
-        :param name: string
-        :return: Room instance
-        """
-        return next((r for r in self._room_list if r.name == name), None)
-
-    def get_room_list(self):
-        """
-        Returns the list of all rooms on the server sorted by name. Data are held in the class Room.
-        """
-        log.info("Downloading room list ...")
-
-        def to_room(json):
-            id = json["id"]
-            name = json["name"]
-            description = json["description"]
-            users_count = json["userCount"]
-
-            room = Room(id, name, description, users_count)
-            room.operator_id = json["adminUserId"]
-            return room
-
-        json_rooms = req.get(JSON_ROOMS_LIST_URL).json()
-
-        rooms = [to_room(j) for j in json_rooms["rooms"]]
-        rooms.sort(key=lambda r: r.name)
-
-        log.debug([r.name for r in rooms])
-        return rooms
-
-    def login(self, user, password):
-        """
-        Logs in to the server as an anonymous user.
-
-        :param user: string
-            Username or email
-        :param password: string
-            Password
-        """
-        data = {"email": user, "password": password}
-
-        log.info("Logging as: {0}, password {1}".format(user, re.sub(".", "*", password)))
-        resp = req.post(LOGIN_URL, headers=self._headers, data=data, cookies=self._cookies)
-        self._cookies.update(resp.cookies)
-
-        # Check whether the login was successful
-        self._login_check(resp)
-
-    def login_as_anonymous(self, user, gender=Gender.MALE):
-        """
-        Logs in to the server as an anonymous user.
-
-        :param user: string
-            Username
-        :param gender: Gender
-            Gender from Gender enum. Default is MALE.
-        """
-        data = {"nick": user, "sex": gender.value}
-
-        log.info("Logging anonymously as: {0} ({1})".format(user, gender.value))
-        resp = req.post(LOGIN_URL, headers=self._headers, data=data, cookies=self._cookies)
-        self._cookies.update(resp.cookies)
-
-        # Check whether the login was successful
-        self._login_check(resp)
-
-    def _login_check(self, resp):
-        html = BeautifulSoup(resp.text, "html.parser")
-        alert = html.find("div", {"class": "alert"})
-
-        self.logged = False
-
-        if self._is_logged_page(html):
-            self.logged = True
-        elif alert:
-            match = re.search(r"\n.+?\n.*$", alert.text)
-            raise LoginError(match.group().strip())
-        else:
-            raise LoginError("Failed to login for unknown reason.")
-
-        log.info("Login successful!")
-
-        # Run schedule
-        threading.Thread(target=self._run_schedule_continuously).start()
-
-    def _is_logged_page(self, html):
-        """
-        Checks whether provided html correspond with the main chat page with logged user.
-
-        :param html: BeautifulSoup Tag
-        :return: Searched <li> tag or None
-        """
-        return html.find("li", {"id": "nav-user"})
-
-    def _get_idler_messgae(self, last_message):
-        """
-        :param last_message: string
-        :return: idler message that is not the same as last_message
-        """
-        if self.idle_strings[0] == last_message:
-            self.idle_strings = rotate(self.idle_strings)
-
-        msg = self.idle_strings[0]
-        self.idle_strings = rotate(self.idle_strings)
-        return msg
 
     def _idler_trigger(self, room):
         """

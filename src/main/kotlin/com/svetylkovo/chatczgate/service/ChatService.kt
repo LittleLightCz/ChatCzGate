@@ -1,9 +1,12 @@
 package com.svetylkovo.chatczgate.service
 
+import com.svetylkovo.chatczgate.beans.AnonymousLogin
+import com.svetylkovo.chatczgate.beans.Login
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.beans.User
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
+import okhttp3.ResponseBody
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -11,19 +14,6 @@ import retrofit2.http.Path
 import java.net.CookieManager
 
 interface ChatService {
-
-    @GET("/api/user/{id}")
-    fun getUserById(@Path("id") id: Int): User?
-
-    @GET("/login")
-    fun pingLoginPage()
-
-    @POST("/json/getHeader")
-    fun pingHeader()
-
-    @POST("/json/getRoomUserTime")
-    fun pingRoomUserTime(room: Room)
-
     companion object {
         fun obtain(): ChatService = Retrofit.Builder()
                 .baseUrl("https://chat.cz")
@@ -43,6 +33,29 @@ interface ChatService {
                 .create(ChatService::class.java)
     }
 
+    @GET("/api/user/{id}")
+    fun getUserById(@Path("id") id: Int): User?
+
+    @GET("/login")
+    fun pingLoginPage()
+
+    @POST("/json/getHeader")
+    fun pingHeader()
+
+    @POST("/json/getRoomUserTime")
+    fun pingRoomUserTime(room: Room)
+
+    @POST("/json/getText")
+    fun getRoomText(room: Room): String
+
+    @GET("/api/rooms")
+    fun getRoomList(): List<Room>
+
+    @POST("/login")
+    fun login(login: Login): ResponseBody
+
+    @POST("/login")
+    fun loginAnonymously(anonymousLogin: AnonymousLogin): ResponseBody
 
 
 }
