@@ -4,7 +4,7 @@ import java.util.*
 
 data class Room
 (
-        val id: Int,
+        val roomId: Int,
         var name: String,
         var description: String,
         var usersCount: Int = 0,

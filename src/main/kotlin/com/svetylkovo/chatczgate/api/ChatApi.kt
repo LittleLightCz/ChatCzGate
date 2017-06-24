@@ -1,44 +1,60 @@
 package com.svetylkovo.chatczgate.api
 
+import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.events.ChatEvent
+import com.svetylkovo.chatczgate.service.ChatService
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.util.*
+import kotlin.concurrent.schedule
 
 class ChatApi(val handler: ChatEvent) {
 
-    var logged = false
+    private val MESSAGES_CHECK_INTERVAL: Long = 5*1000
+    private val USERS_CHECK_INTERVAL: Long = 50*1000
+
+    private val log: Logger = LoggerFactory.getLogger(ChatApi::class.java)
+
+    private val service = ChatService.obtain()
+    private val rooms = ArrayList<Room>()
+
+    private val timer = Timer()
+
+    private var loggedIn = false
+    private var idlerEnabled = false
+    private var idleTime = 1800
+    private var idleString = listOf(".", "..")
 
     init {
+        log.info("Getting cookies ...")
+        service.pingLoginPage()
 
+        timer.schedule(0, USERS_CHECK_INTERVAL) {
+            usersCheck()
+        }
+
+        timer.schedule(0, MESSAGES_CHECK_INTERVAL) {
+            messagesCheck()
+        }
     }
 
+    @Synchronized
+    private fun usersCheck() {
+        try {
+            if (loggedIn) {
+                service.pingHeader()
+                rooms.forEach { service.pingRoomUserTime(it) }
+            }
+        } catch (t: Throwable) {
+            log.error("Error during pinging users' room time!", t)
+        }
+    }
+
+    private fun messagesCheck() {
+    }
+
+
 }
-
-
-
-
-
-
-log.info("Getting cookies ...")
-self._cookies = req.get(LOGIN_URL).cookies
-
-self._headers = {
-    "User-Agent":"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36"
-}
-log.debug(self._headers)
-
-# Set up internal room list
-self._room_list = []
-self._room_list_lock = threading.Lock()
-
-# Set up schedule
-self._scheduler_jobs = []
-self._scheduler_jobs.append(schedule.every(USERS_CHECK_INTERVAL).seconds.do(self._users_check))
-self._scheduler_jobs.append(schedule.every(MESSAGES_CHECK_INTERVAL).seconds.do(self._messages_check))
-
-# Setup idler
-self.idler_enabled = config.getboolean("Idler", "enabled", fallback=False)
-self.idle_time = config.getint("Idler", "idle_seconds", fallback=1800)
-self.idle_strings = config.get("Idler", "idle_strings", fallback=".,..").split(",")
-
 
 /*
 
@@ -58,12 +74,6 @@ JSON_ROOMS_LIST_URL = CHAT_CZ_URL + "/api/rooms"
 JSON_USER_LOOKUP_URL = CHAT_CZ_URL + "/api/user/%d"
 JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
 
-MESSAGES_CHECK_INTERVAL = 5
-USERS_CHECK_INTERVAL = 50
-
-
-
-
 class ChatAPI:
     """
     Class that enables access to chat.cz
@@ -71,26 +81,7 @@ class ChatAPI:
 
 
 
-    def _run_schedule_continuously(self):
-        while self.logged:
-            schedule.run_pending()
-            time.sleep(1)
 
-    def _users_check(self):
-        """
-        Private method that updates user idle times. It is scheduled to run every USERS_CHECK_INTERVAL seconds.
-        """
-        try:
-            # Get header
-            resp = req.post(JSON_HEADER_URL, headers=self._headers, cookies=self._cookies)
-
-            # Get room's user info
-            with self._room_list_lock:
-                for room in self._room_list:
-                    data = {"roomId": room.id}
-                    resp = req.post(JSON_ROOM_USER_TIME_URL, headers=self._headers, data=data, cookies=self._cookies)
-        except:
-            log.exception("Error during users' info check!")
 
     def _process_message(self, room, msg):
         """

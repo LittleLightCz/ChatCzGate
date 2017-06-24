@@ -12,9 +12,7 @@ object UsersCache {
 
     private val mapper = ObjectMapper()
 
-    private val service = Retrofit.Builder()
-                        .baseUrl("https://chat.cz")
-                        .build().create(ChatService::class.java)
+    private val service = ChatService.obtain()
 
     @Synchronized
     fun getByNick(name: String) = users.find { it.name == name }
