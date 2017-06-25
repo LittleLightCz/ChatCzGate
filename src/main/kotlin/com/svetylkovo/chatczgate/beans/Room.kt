@@ -17,7 +17,7 @@ data class Room
     private var users = ArrayList<User>()
 
     fun hasUser(user: User): Boolean {
-        return users.find { it.id == user.id } != null
+        return users.find { it.uid == user.uid } != null
     }
 
     fun addUser(user: User) {
@@ -25,9 +25,11 @@ data class Room
     }
 
     fun removeUser(user: User) {
-        users.removeIf { it.id == user.id }
+        users.removeIf { it.uid == user.uid }
     }
 
     fun getUserByName(name: String) = users.find { it.name == name }
+
+    fun getUserByUid(uid: Int) = users.find { it.uid == uid }
 
 }

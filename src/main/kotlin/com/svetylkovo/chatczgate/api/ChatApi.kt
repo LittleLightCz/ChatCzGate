@@ -1,11 +1,12 @@
 package com.svetylkovo.chatczgate.api
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.svetylkovo.chatczgate.beans.*
 import com.svetylkovo.chatczgate.cache.UsersCache
 import com.svetylkovo.chatczgate.events.ChatEvent
 import com.svetylkovo.chatczgate.service.ChatService
-import com.svetylkovo.rojo.Rojo
 import okhttp3.ResponseBody
+import org.apache.commons.lang3.StringEscapeUtils
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.slf4j.Logger
@@ -13,7 +14,7 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import kotlin.concurrent.schedule
 
-class ChatApi(val handler: ChatEvent) {
+class ChatApi(val chatEvent: ChatEvent) {
 
     private val MESSAGES_CHECK_INTERVAL: Long = 5*1000
     private val USERS_CHECK_INTERVAL: Long = 50*1000
@@ -24,6 +25,7 @@ class ChatApi(val handler: ChatEvent) {
     private val rooms = ArrayList<Room>()
 
     private val timer = Timer()
+    private val mapper = ObjectMapper()
 
     private var loggedIn = false
     private var idlerEnabled = false
@@ -61,7 +63,7 @@ class ChatApi(val handler: ChatEvent) {
             for(room in rooms) {
                 log.debug("Checking for new messages in: ${room.name}")
                 val response = service.getRoomText(room)
-                processMessages(response)
+                processRoomMessages(room, response)
                 triggerIdler(room)
             }
         } catch (t: Throwable) {
@@ -122,19 +124,114 @@ class ChatApi(val handler: ChatEvent) {
         return html.select("li#nav-user").first() != null
     }
 
-    private fun  triggerIdler(room: Room) {
+    private fun triggerIdler(room: Room) {
     }
 
-    private fun processMessages(response: String) {
+    private fun getIdlerMessage(lastMessage: String): String {
+        val idleString = idleStrings.filter { it != lastMessage }
+                                    .firstOrNull() ?: "..."
 
+        Collections.rotate(idleStrings, 1)
+        return idleString
     }
 
-    private fun getIdlerMessage(lastMessage: String) =
-            idleStrings.filter { it != lastMessage }.firstOrNull()
-            ?: "..."
+    private fun idlerTrigger(room: Room) {
+        if (idlerEnabled && System.currentTimeMillis() - room.timestamp > idleTime) {
+            val msg = getIdlerMessage(room.lastMessage)
+            say(room, msg)
+            chatEvent.systemMessage(room, "IDLER: $msg")
+        }
+    }
 
+    @Synchronized
+    private fun removeRoom(room: Room) {
+        rooms.removeIf { it.roomId == room.roomId }
+    }
 
-}
+    /**
+     * Adds admin rights to nick
+     */
+    fun admin(room: Room, nick: String) {
+        say(room, "/admin $nick")
+    }
+
+    @Synchronized
+    fun whisper(toNick: String, text: String) {
+        rooms.firstOrNull()?.let {
+            say(it, text, toNick)
+        }
+        ?: throw RuntimeException("Failed to create a whisper message! There are no active rooms. Join the room first!")
+    }
+
+    fun kick(room: Room, user: String, reason: String) {
+        say(room, "/kick $user $reason")
+    }
+
+    @Synchronized
+    private fun  processRoomMessages(room: Room, resp: RoomResponse) {
+        if (resp.success != null) {
+            resp.data?.index?.let { room.chatIndex = it }
+            resp.data?.data?.forEach { processMessage(room, it)}
+        } else {
+            when(resp.statusMessage) {
+                "User in room NOT_FOUND" -> {
+                    chatEvent.kicked(room)
+                    removeRoom(room)
+                }
+                else -> {
+                    log.error("Failed to get new messages: ${resp.statusMessage}")
+                }
+            }
+        }
+    }
+
+    private fun processMessage(room: Room, message: RoomMessage) {
+        when(message.s){
+            "enter" -> {
+                val user = message.user
+                UsersCache.addUser(user)
+                room.addUser(user)
+                chatEvent.userJoined(room, user)
+            }
+            "leave","auto_leave" -> {
+                room.getUserByUid(message.uid)?.let { user ->
+                    room.removeUser(user)
+                    chatEvent.userLeft(room, user)
+                }
+            }
+            "cli" -> chatEvent.systemMessage(room, message.t)
+            "user","friend" -> UsersCache.addUser(message.user)
+            "admin" -> {
+                UsersCache.getByName(message.nick)?.let { user ->
+                    updateRoomInfo(room)
+                    if (room.operatorId == user.uid)
+                        chatEvent.userMode(room, user, "+h")
+                }
+            }
+            is String -> log.warn("Unknown system message: \n${mapper.writeValueAsString(message)}")
+            else -> {
+                //Standard message
+                val user = UsersCache.getByUid(message.uid)
+
+                if (user != null) {
+                    val text = StringEscapeUtils.unescapeHtml4(message.t)
+
+                    if (message.w != null) {
+                        if (message.to == 0 && room == rooms.first()) {
+                            chatEvent.newMessage(room, user, text, true)
+                        }
+                    } else {
+                        chatEvent.newMessage(room, user, text, false)
+                    }
+                } else {
+                    val warnMessage = "Unknown UID: ${message.uid} -> ${message.t}"
+                    log.warn(warnMessage)
+                    chatEvent.systemMessage(room, "WARNING: $warnMessage")
+                }
+            }
+        }
+    }
+
 
 
 /*
@@ -157,104 +254,13 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
 
 
 
-    def _process_message(self, room, msg):
-        """
-        Parse and process JSON message data
-        :param room: Room
-        :param msg: JSON data object
-        """
-        if "s" in msg:
-            # System message
-            if msg["s"] == "enter":
-                user = User(msg["user"])
-                # Add user to DB
-                UserDb.add_user(user)
-                # Add user to the room if he already isn't there
-                if not room.has_user(user):
-                    room.add_user(user)
-                    self._event.user_joined(room, user)
-            elif msg["s"] in ["leave","auto_leave"]:
-                user = room.get_user_by_id(msg["uid"])
-                if user:
-                    room.remove_user(user)
-                    self._event.user_left(room, user)
-            elif msg["s"] == "cli":
-                # Send system notice
-                self._event.system_message(room, msg["t"])
-            elif msg["s"] == "user":
-                # Info about whispering user ...
-                UserDb.add_user_from_json(msg["user"])
-            elif msg["s"] == "admin":
-                # Send mode OP
-                user = UserDb.get_user_by_name(msg["nick"])
-                self._update_room_info(room)
-                if room.operator_id == user.id:
-                    self._event.user_mode(room, user, "+h")
-            elif msg["s"] == "friend":
-                # ?? just add him to DB :-)
-                UserDb.add_user_from_json(msg)
-            else:
-                log.warning("Unknown system message:")
-                log.warning(json.dumps(msg, indent=4))
-        else:
-            # Standard chat message
-            uid = msg["uid"]
-            user = UserDb.get_user_by_uid(uid)
-            if user:
-                # Ignore messages from users that are not in the room?
-                whisper = "w" in msg
-                text = html.unescape(msg["t"])
-                if whisper:
-                    # If to == 1, then ignore this whisper message because it comes from me
-                    # and ignore all whisper messages from other rooms except the "first" one
-                    if msg["to"] == 0 and room == self._room_list[0]:
-                        self._event.new_message(room, user, text, whisper)
-                else:
-                    self._event.new_message(room, user, text, whisper)
-            else:
-                message = "Unknown UID: {0} -> {1}".format(uid, msg["t"])
-                log.warning(message)
-                self._event.system_message(room, "WARNING: "+message)
-
-
-    def _process_room_messages_from_json(self, json_data, room):
-        """
-        Processes the new messages from JSON response for a specific room.
-
-        WARNING: Always call this method with _room_list_lock
-
-        :param json_data: JSON
-        :param room: Room
-        """
-        with room.lock:
-            if json_data['success']:
-                # Update chat index
-                room.chat_index = json_data['data']['index']
-                # Get messages
-                messages = json_data['data']['data']
-                for msg in messages:
-                    self._process_message(room, msg)
-            else:
-                error_message = json_data['statusMessage']
-                if error_message == "User in room NOT_FOUND":
-                    # You have been kicked from the room (automatically or intentionally?)
-                    self._event.kicked(room)
-                    self._remove_room(room)
-                else:
-                    log.error("Failed to get new messages: " + error_message)
 
 
 
 
-    def _idler_trigger(self, room):
-        """
-        Triggers idler for given room.
-        :param room: Room
-        """
-        if self.idler_enabled and time.time()-room.timestamp > self.idle_time:
-            msg = self._get_idler_messgae(room.last_message)
-            self.say(room, msg)
-            self._event.system_message(room, "IDLER: {0}".format(msg))
+
+
+
 
     def get_user_profile(self, nick):
         """
@@ -269,7 +275,7 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
             profile = UserProfile()
 
             # User lookup data
-            data = req.get(JSON_USER_LOOKUP_URL % user.id).json()
+            data = req.get(JSON_USER_LOOKUP_URL % user.uid).json()
             if "user" in data:
                 d = data["user"]
                 profile.anonymous = d["anonym"]
@@ -282,7 +288,7 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
                 profile.rooms = [r["name"] for r in data["rooms"]]
 
             # User profile data
-            data = req.get(JSON_USER_PROFILE_URL % user.id).json()
+            data = req.get(JSON_USER_PROFILE_URL % user.uid).json()
             if "profile" in data:
                 p = data["profile"]
                 profile.age = p["age"]
@@ -322,12 +328,12 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
         with room.lock:
             # Get users in the room
             log.debug("Getting user list for room: {0}".format(room.name))
-            resp = req.get(JSON_ROOM_USER_LIST_URL % room.id)
+            resp = req.get(JSON_ROOM_USER_LIST_URL % room.uid)
             room.user_list = [User(user) for user in resp.json()["users"]]
 
             # Get admin list (not mandatory)
             log.debug("Getting admin list for room: {0}".format(room.name))
-            resp = req.get(JSON_ROOM_ADMIN_LIST_URL % room.id)
+            resp = req.get(JSON_ROOM_ADMIN_LIST_URL % room.uid)
             room.admin_list = [user["nick"] for user in resp.json()["admins"]]
 
         # Add room to the list
@@ -343,7 +349,7 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
         :param room: Room
         """
         log.info("Leaving the room: "+room.name)
-        resp = req.get(LEAVE_ROOM_URL % room.id, headers=self._headers, cookies=self._cookies)
+        resp = req.get(LEAVE_ROOM_URL % room.uid, headers=self._headers, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
         html = BeautifulSoup(resp.text, "html.parser")
@@ -354,41 +360,7 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
             else:
                 raise RoomError("Failed to leave the room: "+room.name)
 
-    def _remove_room(self, room):
-        self._room_list = [r for r in self._room_list if r.id != room.id]
 
-    def admin(self, room, nick):
-        """
-        Adds admin rights to nick
-        :param room: Room
-        :param nick: string
-        """
-        self.say(room, "/admin "+nick)
-
-    def whisper(self, to_user, text):
-        """
-        Whispers to the user
-
-        :param to_user: string
-            Username to whisper to
-        :param text: string
-            Text to be told
-        """
-        if len(self._room_list) > 0:
-            room = self._room_list[0]
-            self.say(room, text, to_user)
-        else:
-            raise MessageError("Failed to create a whisper message! There are no active rooms. Join the room first!")
-
-    def kick(self, room, user, reason):
-        """
-        Kicks user from the room
-
-        :param room: Room
-        :param user: string
-        :param reason: string
-        """
-        self.say(room, "/kick {0} {1}".format(user, reason))
 
     def say(self, room, text, to_user=None):
         """
@@ -408,13 +380,13 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
         with self._room_list_lock:
             # Create data
             data = {
-                "roomId": room.id,
+                "roomId": room.uid,
                 "chatIndex": room.chat_index,
                 "text": text,
                 "userIdTo": "0"
             }
 
-            log.debug("[{0},{1}] Sending: {2}".format(room.id, to_user, text))
+            log.debug("[{0},{1}] Sending: {2}".format(room.uid, to_user, text))
             resp = req.post(JSON_TEXT_URL, headers=self._headers, data=data, cookies=self._cookies)
             self._cookies.update(resp.cookies)
 
@@ -437,7 +409,7 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
         Updates room info
         :param room: Room
         """
-        json = req.get(JSON_ROOM_INFO_URL+str(room.id)).json()
+        json = req.get(JSON_ROOM_INFO_URL+str(room.uid)).json()
         room.description = json["room"]["description"]
         room.operator_id = json["room"]["adminUserId"]
 
@@ -452,3 +424,6 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
 
 
  */
+}
+
+

@@ -3,7 +3,6 @@ package com.svetylkovo.chatczgate.cache
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.svetylkovo.chatczgate.beans.User
 import com.svetylkovo.chatczgate.service.ChatService
-import retrofit2.Retrofit
 import java.util.*
 
 object UsersCache {
@@ -18,11 +17,11 @@ object UsersCache {
     fun getByName(name: String) = users.find { it.name == name }
 
     @Synchronized
-    fun getById(id: Int): User? {
-        var user = users.find { it.id == id }
+    fun getByUid(uid: Int): User? {
+        var user = users.find { it.uid == uid }
 
         if (user == null) {
-            user = service.getUserById(id)
+            user = service.getUserById(uid)
             if (user != null) {
                 users.add(user)
                 return user

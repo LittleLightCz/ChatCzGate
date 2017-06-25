@@ -33,8 +33,8 @@ interface ChatService {
                 .create(ChatService::class.java)
     }
 
-    @GET("/api/user/{id}")
-    fun getUserById(@Path("id") id: Int): User?
+    @GET("/api/user/{uid}")
+    fun getUserById(@Path("uid") id: Int): User?
 
     @GET("/login")
     fun pingLoginPage()
