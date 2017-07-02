@@ -349,8 +349,8 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                         self.reply_notice_all("Profil zobrazen: {0}x".format(profile.viewed))
 
                     # Temporarily removed because REST returns just small picture thumbnail URL
-                    # if profile.profile_image:
-                    #     self.reply_notice_all("Profilovka: {0}".format(profile.profile_image))
+                    # if profile.imageUrl:
+                    #     self.reply_notice_all("Profilovka: {0}".format(profile.imageUrl))
 
                     self.reply_notice_all("Online: {0}".format(profile.online))
 
@@ -359,7 +359,7 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                         self.reply_notice_all("Chatuje v: {0}".format(", ".join(channels)))
 
                     if not profile.anonymous:
-                       self.reply_notice_all("Profil: {0}".format(profile.profile_url))
+                       self.reply_notice_all("Profil: {0}".format(profile.url))
 
 
                     self.reply_notice_all("=== End Of WHOIS Profile ===")

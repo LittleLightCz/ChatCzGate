@@ -2,7 +2,7 @@ package com.svetylkovo.chatczgate.cache
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.svetylkovo.chatczgate.beans.User
-import com.svetylkovo.chatczgate.service.ChatService
+import com.svetylkovo.chatczgate.rest.ChatClient
 import java.util.*
 
 object UsersCache {
@@ -11,10 +11,10 @@ object UsersCache {
 
     private val mapper = ObjectMapper()
 
-    private val service = ChatService.obtain()
+    private val service = ChatClient.obtain()
 
     @Synchronized
-    fun getByName(name: String) = users.find { it.name == name }
+    fun getByName(name: String) = users.find { it.nick == name }
 
     @Synchronized
     fun getByUid(uid: Int): User? {
@@ -33,7 +33,7 @@ object UsersCache {
 
     @Synchronized
     fun addUser(user: User) {
-        users.find { it.name == user.name } ?: users.add(user)
+        users.find { it.nick == user.nick } ?: users.add(user)
     }
 
     @Synchronized

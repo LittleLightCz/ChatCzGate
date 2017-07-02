@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.svetylkovo.chatczgate.beans.*
 import com.svetylkovo.chatczgate.cache.UsersCache
 import com.svetylkovo.chatczgate.events.ChatEvent
+import com.svetylkovo.chatczgate.rest.ChatClient
 import com.svetylkovo.chatczgate.service.ChatService
 import okhttp3.ResponseBody
 import org.apache.commons.lang3.StringEscapeUtils
@@ -21,7 +22,7 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     private val log: Logger = LoggerFactory.getLogger(ChatApi::class.java)
 
-    private val service = ChatService.obtain()
+    private val service = ChatService()
     private val rooms = ArrayList<Room>()
 
     private val timer = Timer()
@@ -90,7 +91,7 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     fun getRoomList(): List<Room> {
         log.info("Downloading room list ...")
-        return service.getRoomList().sortedBy { it.name }
+        return service.getRoomList()?.sortedBy { it.name } ?: emptyList()
     }
 
     fun login(user: String, password: String) {
@@ -105,8 +106,8 @@ class ChatApi(val chatEvent: ChatEvent) {
         loginCheck(response)
     }
 
-    private fun loginCheck(resp: ResponseBody) {
-        val html = Jsoup.parse(resp.string())
+    private fun loginCheck(resp: String) {
+        val html = Jsoup.parse(resp)
         val alert = html.select("div[class=alert]")
                         .firstOrNull()
 
@@ -168,18 +169,18 @@ class ChatApi(val chatEvent: ChatEvent) {
     }
 
     @Synchronized
-    private fun  processRoomMessages(room: Room, resp: RoomResponse) {
-        if (resp.success != null) {
+    private fun  processRoomMessages(room: Room, resp: RoomResponse?) {
+        if (resp?.success != null) {
             resp.data?.index?.let { room.chatIndex = it }
             resp.data?.data?.forEach { processMessage(room, it)}
         } else {
-            when(resp.statusMessage) {
+            when(resp?.statusMessage) {
                 "User in room NOT_FOUND" -> {
                     chatEvent.kicked(room)
                     removeRoom(room)
                 }
                 else -> {
-                    log.error("Failed to get new messages: ${resp.statusMessage}")
+                    log.error("Failed to get new messages: ${resp?.statusMessage}")
                 }
             }
         }
@@ -232,6 +233,18 @@ class ChatApi(val chatEvent: ChatEvent) {
         }
     }
 
+    fun getUserProfile(userName: String) =
+        getUserByName(userName)?.uid?.let { uid ->
+            val user = service.getUserById(uid)
+            val profile = service.getUserProfile(uid)
+            UserProfile(user, profile)
+        }
+
+
+
+
+
+
 
 
 /*
@@ -262,42 +275,6 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
 
 
 
-    def get_user_profile(self, nick):
-        """
-        Return user's profile
-        :param nick: string
-        :return: UserProfile
-        """
-
-        user = self.get_user_by_name(nick)
-
-        if user:
-            profile = UserProfile()
-
-            # User lookup data
-            data = req.get(JSON_USER_LOOKUP_URL % user.uid).json()
-            if "user" in data:
-                d = data["user"]
-                profile.anonymous = d["anonym"]
-                profile.nick = d["nick"]
-                profile.online = d["online"]
-                profile.gender = Gender(d["sex"])
-                profile.profile_url = PROFILE_URL + urllib.parse.quote(profile.nick)
-
-            if "rooms" in data:
-                profile.rooms = [r["name"] for r in data["rooms"]]
-
-            # User profile data
-            data = req.get(JSON_USER_PROFILE_URL % user.uid).json()
-            if "profile" in data:
-                p = data["profile"]
-                profile.age = p["age"]
-                profile.profile_image = p.get("imageUrl")
-                profile.viewed = p["profileViewCount"]
-
-            return profile
-        else:
-            return None
 
     def logout(self):
         """
@@ -321,18 +298,18 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
         Enters the room
         :param room: Room
         """
-        log.info("Entering the room: "+room.name)
-        resp = req.get(CHAT_CZ_URL + "/" + room.name, headers=self._headers, cookies=self._cookies)
+        log.info("Entering the room: "+room.nick)
+        resp = req.get(CHAT_CZ_URL + "/" + room.nick, headers=self._headers, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
         with room.lock:
             # Get users in the room
-            log.debug("Getting user list for room: {0}".format(room.name))
+            log.debug("Getting user list for room: {0}".format(room.nick))
             resp = req.get(JSON_ROOM_USER_LIST_URL % room.uid)
             room.user_list = [User(user) for user in resp.json()["users"]]
 
             # Get admin list (not mandatory)
-            log.debug("Getting admin list for room: {0}".format(room.name))
+            log.debug("Getting admin list for room: {0}".format(room.nick))
             resp = req.get(JSON_ROOM_ADMIN_LIST_URL % room.uid)
             room.admin_list = [user["nick"] for user in resp.json()["admins"]]
 
@@ -348,7 +325,7 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
         Leaves the room
         :param room: Room
         """
-        log.info("Leaving the room: "+room.name)
+        log.info("Leaving the room: "+room.nick)
         resp = req.get(LEAVE_ROOM_URL % room.uid, headers=self._headers, cookies=self._cookies)
         self._cookies.update(resp.cookies)
 
@@ -358,7 +335,7 @@ JSON_USER_PROFILE_URL = CHAT_CZ_URL + "/api/user/%d/profile"
                 # Remove room from the list
                 self._remove_room(room)
             else:
-                raise RoomError("Failed to leave the room: "+room.name)
+                raise RoomError("Failed to leave the room: "+room.nick)
 
 
 

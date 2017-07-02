@@ -28,7 +28,7 @@ data class Room
         users.removeIf { it.uid == user.uid }
     }
 
-    fun getUserByName(name: String) = users.find { it.name == name }
+    fun getUserByName(name: String) = users.find { it.nick == name }
 
     fun getUserByUid(uid: Int) = users.find { it.uid == uid }
 
