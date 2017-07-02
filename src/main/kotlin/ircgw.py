@@ -12,8 +12,6 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
 
 
-    def get_nick(self):
-        return self.nickname or self.username
 
     def socket_send(self, response):
         """

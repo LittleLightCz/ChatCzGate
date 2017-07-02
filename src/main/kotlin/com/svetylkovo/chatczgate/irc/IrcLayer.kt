@@ -18,10 +18,15 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     private val reader = conn.getInputStream().reader().buffered()
 
     val chatApi = ChatApi(this)
-    val nick = ""
-    val userName = ""
-    val password = ""
-    val hostname = "chat.cz"
+
+    var nick = ""
+        get() = if (nick.isEmpty()) userName else nick
+
+    var userName = ""
+    var password = ""
+    var hostname = "chat.cz"
+
+    var run = true
 
     //TODO val self.plugins = Plugins(config)
 
@@ -30,7 +35,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     override fun run() {
         try {
             reader.use {
-                while (true) {
+                while (run) {
                     val line = reader.readLine() ?: ""
                     log.debug("Received: $line")
 
@@ -52,18 +57,25 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handleClientInput(line: String) {
-
         commandMatcher.match(line).ifPresent { (command, args) ->
-            log.info("Matched $command ===> $args")
+            when(command) {
+                "PASS" -> handleCommand(command, args.replace(Regex("."), "*"))
+                else -> handleCommand(command, args)
+            }
         }
-
-
-//        debug_args = re.sub(".", "*", args) if command == "PASS" else args
-//        log.debug("Parsed command %s args: %s " % (command, debug_args))
-//        self.handle_command(command.upper(), args)
-
     }
 
+    private fun handleCommand(command: String, args: String) {
+        log.info("IRC command: $command, args: $args")
+
+        when(command) {
+            "QUIT" -> {
+                chatApi.logout()
+                run = false
+            }
+            else -> log.warn("Unrecognized command: $command")
+        }
+    }
 
     override fun newMessage(room: Room, user: User, text: String, whisper: Boolean) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
