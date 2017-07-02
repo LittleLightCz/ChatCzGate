@@ -3,7 +3,6 @@ package com.svetylkovo.chatczgate.service
 import com.svetylkovo.chatczgate.beans.AnonymousLogin
 import com.svetylkovo.chatczgate.beans.Login
 import com.svetylkovo.chatczgate.beans.Room
-import com.svetylkovo.chatczgate.beans.RoomResponse
 import com.svetylkovo.chatczgate.rest.ChatClient
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
@@ -43,7 +42,7 @@ class ChatService {
         client.pingRoomUserTime(room)
     }
 
-    fun getRoomText(room: Room) = client.getRoomText(room).bodyOrError()
+    fun getRoomText(room: Room) = client.getRoomText(room.roomId, room.chatIndex).bodyOrError()
 
     fun getRoomList() = client.getRoomList().bodyOrError()
 
@@ -55,11 +54,25 @@ class ChatService {
 
     fun getUserProfile(uid: Int) = client.getUserProfile(uid).bodyOrError()?.profile
 
+    fun logout() = client.logout().responseBodyString()
+
+    fun join(room: Room) = client.join(room.name)
+
+    fun getRoomUsers(room: Room) = client.getRoomUsers(room.roomId).bodyOrError()?.users
+
+    fun getRoomAdmins(room: Room) = client.getRoomAdmins(room.roomId).bodyOrError()?.admins
+
+    fun part(room: Room) = client.part(room.roomId).responseBodyString()
+
+    fun say(room: Room, msg: String) =
+            client.sendRoomMessage(room.roomId, room.chatIndex, msg).bodyOrError()?.room
+
+    fun getRoomInfo(room: Room) = client.getRoomInfo(room.roomId).bodyOrError()?.room
+
 }
 
 fun <T> Call<T>.bodyOrError(): T? {
     val resp = this.execute()
-
     if (resp.isSuccessful) {
         return resp.body()
     }

@@ -24,9 +24,6 @@ interface ChatClient {
     @POST("/json/getRoomUserTime")
     fun pingRoomUserTime(room: Room)
 
-    @POST("/json/getText")
-    fun getRoomText(room: Room): Call<RoomResponse>
-
     @GET("/api/rooms")
     fun getRoomList(): Call<List<Room>>
 
@@ -35,6 +32,30 @@ interface ChatClient {
 
     @POST("/login")
     fun loginAnonymously(anonymousLogin: AnonymousLogin): Call<ResponseBody>
+
+    @POST("/json/getText")
+    fun sendRoomMessage(roomId: Int, chatIndex: Int, text: String? = null, userIdTo: Int = 0): Call<RestResponse>
+
+    @POST("/json/getText")
+    fun getRoomText(roomId: Int, chatIndex: Int): Call<RoomResponse>
+
+    @GET("/logout")
+    fun logout(): Call<ResponseBody>
+
+    @GET("/logout")
+    fun join(name: String)
+
+    @GET("/api/room/{id}/users")
+    fun getRoomUsers(@Path("id") roomId: Int): Call<RestResponse>
+
+    @GET("/api/room/{id}/admins")
+    fun getRoomAdmins(@Path("id") roomId: Int): Call<RestResponse>
+
+    @GET("/api/room/{id}")
+    fun getRoomInfo(@Path("id") roomId: Int): Call<RestResponse>
+
+    @GET("/leaveRoom/{id}")
+    fun part(@Path("id") roomId: Int): Call<ResponseBody>
 
 }
 
