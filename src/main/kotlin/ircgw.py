@@ -1,22 +1,3 @@
-from __future__ import print_function
-import sys
-
-# Check for Python version
-if sys.version_info < (3,0):
-    print("You need Python 3.x to run this application!")
-    exit(0)
-
-import re
-import socketserver
-
-from threading import Lock
-from chatapi import ChatAPI, ChatEvent, UserDb
-from conf import config
-from error import LoginError, MessageError
-from logger import log
-from plugins import PluginData, Plugins
-from room import Gender
-from tools import *
 
 IRC_HOSTNAME = "localhost"
 
@@ -29,55 +10,7 @@ IRC_PORT = config.getint("IRC Server", "port", fallback=6667)
 class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
     """ IRC connection handler """
 
-    def __init__(self, request, client_address, server):
-        self.chatapi = ChatAPI(self)
-        self.nickname = None
-        self.username = None
-        self.password = None
-        self.hostname = "chat.cz"
-        self.plugins = Plugins(config)
-        self._socket_lock = Lock()
-        super().__init__(request, client_address, server)
 
-    def handle(self):
-        """ Handles incoming message """
-        try:
-            socket_file = self.request.makefile(mode="r", encoding=ENCODING)
-            while True:
-                line = socket_file.readline()
-                if line:
-                    log.debug("RAW: %s" % line)
-
-                    data = self.plugins.process(PluginData(command=line))
-                    for cmd in data.result_commands:
-                        self.parse_line(cmd)
-
-                    for reply in data.result_replies:
-                        self.socket_send(reply)
-                else:
-                    log.info("Received empty line! Closing the connection ...")
-                    break
-        except ConnectionResetError:
-            log.info("Connection closed.")
-        except Exception:
-            log.exception("Exception during socket reading!")
-            try:
-                if self.chatapi.logged:
-                    log.info("We are still logged, doing logout ...")
-                    self.chatapi.logout()
-            except Exception:
-                log.exception("Failed to logout!")
-
-    def parse_line(self, line):
-        """ Parse lines and call command handlers """
-        match = re.match(r"(^\w+)\s*(.+)?", line)
-        if match:
-            command, args = match.groups()
-            args = args or ""
-
-            debug_args = re.sub(".", "*", args) if command == "PASS" else args
-            log.debug("Parsed command %s args: %s " % (command, debug_args))
-            self.handle_command(command.upper(), args)
 
     def get_nick(self):
         return self.nickname or self.username
@@ -474,19 +407,4 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
         self.reply_kick(to_ws("#"+room.name), "Reason not implemented yet!")
 
 
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    """ Allows multiple clients """
-    pass
 
-"""
-Main launch script
-"""
-
-t = ThreadedTCPServer((IRC_HOSTNAME, IRC_PORT), IRCServer)  # TODO hostname from config
-
-try:
-    log.info("*** ChatCzGate version {0} ***".format(VERSION))
-    log.info("Listening on port: {0}".format(IRC_PORT))
-    t.serve_forever()
-except KeyboardInterrupt:
-    sys.exit(0)

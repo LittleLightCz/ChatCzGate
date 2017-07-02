@@ -16,13 +16,13 @@ interface ChatClient {
     fun getUserProfile(@Path("uid") uid: Int): Call<RestResponse>
 
     @GET("/login")
-    fun pingLoginPage()
+    fun pingLoginPage(): Call<Void>
 
     @POST("/json/getHeader")
-    fun pingHeader()
+    fun pingHeader(): Call<Void>
 
     @POST("/json/getRoomUserTime")
-    fun pingRoomUserTime(room: Room)
+    fun pingRoomUserTime(room: Room): Call<Void>
 
     @GET("/api/rooms")
     fun getRoomList(): Call<List<Room>>

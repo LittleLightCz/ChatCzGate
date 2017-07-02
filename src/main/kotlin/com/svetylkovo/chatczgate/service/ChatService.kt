@@ -4,6 +4,7 @@ import com.svetylkovo.chatczgate.beans.AnonymousLogin
 import com.svetylkovo.chatczgate.beans.Login
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.rest.ChatClient
+import com.svetylkovo.chatczgate.ssl.NaiveSSL
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
@@ -25,21 +26,23 @@ class ChatService {
                                         .build()
                                 chain.proceed(request)
                             }
+                            .sslSocketFactory(NaiveSSL.getSocketFactory(), NaiveSSL.trustManager)
+                            .hostnameVerifier(NaiveSSL.hostnameVerifier)
                             .build()
             )
             .build()
             .create(ChatClient::class.java)
 
     fun pingLoginPage() {
-        client.pingLoginPage()
+        client.pingLoginPage().execute()
     }
 
     fun pingHeader() {
-        client.pingHeader()
+        client.pingHeader().execute()
     }
 
     fun pingRoomUserTime(room: Room) {
-        client.pingRoomUserTime(room)
+        client.pingRoomUserTime(room).execute()
     }
 
     fun getRoomText(room: Room) = client.getRoomText(room.roomId, room.chatIndex).bodyOrError()

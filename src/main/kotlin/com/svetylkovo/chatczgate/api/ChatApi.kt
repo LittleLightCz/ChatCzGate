@@ -25,7 +25,7 @@ class ChatApi(val chatEvent: ChatEvent) {
     private val timer = Timer()
     private val mapper = ObjectMapper()
 
-    private var loggedIn = false
+    var loggedIn = false
     private var idlerEnabled = false
     private var idleTime = 1800
     private var idleStrings = listOf(".", "..")
@@ -125,6 +125,7 @@ class ChatApi(val chatEvent: ChatEvent) {
     }
 
     private fun triggerIdler(room: Room) {
+        //TODO
     }
 
     private fun getIdlerMessage(lastMessage: String): String {
