@@ -7,7 +7,7 @@ data class User(
         var gender: Gender,
         var anonymous: Boolean,
         var idle: Int,
-        var adminId: Int,
+        var adminId: Int?,
         var karma: Int
 ) {
     var online: Boolean? = null

@@ -3,6 +3,7 @@ package com.svetylkovo.chatczgate.irc
 import com.svetylkovo.chatczgate.ChatCzGate
 import com.svetylkovo.chatczgate.ChatCzGate.VERSION
 import com.svetylkovo.chatczgate.api.ChatApi
+import com.svetylkovo.chatczgate.beans.Gender
 import com.svetylkovo.chatczgate.beans.IrcCommand
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.beans.User
@@ -24,7 +25,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     val chatApi = ChatApi(this)
 
     var nick = ""
-        get() = if (nick.isEmpty()) userName else nick
+        get() = if (field.isEmpty()) userName else field
 
     var userName = ""
     var password = ""
@@ -62,17 +63,21 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
 
     private fun handleClientInput(line: String) {
         commandMatcher.match(line).ifPresent { (command, args) ->
-            when(command) {
-                "PASS" -> handleCommand(command, args.replace(Regex("."), "*"))
-                else -> handleCommand(command, args)
-            }
+            handleCommand(command, args)
         }
     }
 
     private fun handleCommand(command: String, args: String) {
-        log.info("IRC command: $command, args: $args")
+        if (command != "PASS") {
+            log.info("IRC command: $command, args: $args")
+        } else {
+            log.info("Received PASS command")
+        }
 
         when(command) {
+            "PASS" -> handlePass(args)
+            "NICK" -> handleNick(args)
+            "USER" -> handleUser(args)
             "QUIT" -> handleQuit()
             else -> log.warn("Unrecognized command: $command")
         }
@@ -83,6 +88,43 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         run = false
     }
 
+    private fun handleUser(args: String) {
+        val parsedUsername = Rojo.find("^\\S+", args).orElse("")
+        if (!parsedUsername.isEmpty()) {
+            userName = parsedUsername
+        } else {
+            notEnoughArgsReply("USER $args")
+        }
+    }
+
+    private fun handleNick(args: String) {
+        nick = args
+
+        // When NICK is received, perform login
+        try {
+            if (!password.isEmpty()) {
+                chatApi.login(nick, password)
+            } else {
+                // Todo Solve male/female problem
+                chatApi.loginAnonymously(nick, Gender.MALE)
+            }
+
+            sendWelcomeMessage()
+        } catch(t: Throwable) {
+            log.error("Failed to login!", t)
+            // Todo: send wrong password reply
+        }
+    }
+
+    private fun handlePass(args: String) {
+        Rojo.firstGroup("^:?(.+)", args).forEach {
+            password = it
+        }
+    }
+
+/*
+
+ */
     private fun socketSend(message: String) {
         //TODO handle plugins:        data = self.plugins.process(PluginData(reply=response))
         log.debug("Sending: $message")
@@ -149,6 +191,42 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         reply(375, "Message of the day -")
         sendMotd("With great power comes great responsibility ...")
         reply(376, "$nick :End of MOTD command.")
+    }
+
+    private fun sendWhoUserInfo(room: Room, user: User) {
+        val roomName = room.name.toWhitespace()
+        val nick = user.nick.toWhitespace()
+        val gender = user.gender.value
+        val op = "" // Admin SS DS ?
+        socketSend("#$roomName $nick@$hostname unknown $hostname $nick $gender $op:0 $nick")
+    }
+
+    /**
+     * Sets the right mode for specific user
+     */
+    private fun setUserMode(user: User, room: Room) {
+        val nick = user.nick.toWhitespace()
+        val channel = "#${room.name}".toWhitespace()
+
+        // Mark girl
+        if (user.gender == Gender.FEMALE){
+            replyMode(channel, "+v", nick)
+        }
+
+        // Mark operator
+        if (room.admins.contains(user.nick))
+            replyMode(channel, "+o", nick)
+
+        // Mark half-operator
+        if (user.uid == room.operatorId) {
+            replyMode(channel, "+h", nick)
+        }
+
+        // Mark room admin
+        if (user.adminId != null) {
+            replyMode(channel, "+A", nick)
+        }
+
     }
 
     override fun newMessage(room: Room, user: User, text: String, whisper: Boolean) {

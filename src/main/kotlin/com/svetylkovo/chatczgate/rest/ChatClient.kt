@@ -3,6 +3,7 @@ package com.svetylkovo.chatczgate.rest
 import com.svetylkovo.chatczgate.beans.*
 import okhttp3.ResponseBody
 import retrofit2.Call
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -31,7 +32,7 @@ interface ChatClient {
     fun login(login: Login): Call<ResponseBody>
 
     @POST("/login")
-    fun loginAnonymously(anonymousLogin: AnonymousLogin): Call<ResponseBody>
+    fun loginAnonymously(@Body anonymousLogin: AnonymousLogin): Call<ResponseBody>
 
     @POST("/json/getText")
     fun sendRoomMessage(roomId: Int, chatIndex: Int, text: String? = null, userIdTo: Int = 0): Call<RestResponse>

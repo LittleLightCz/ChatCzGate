@@ -12,64 +12,13 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
 
 
-    def send_who_user_info(self, room, user):
-        nick = to_ws(user.name)
-        host = self.hostname
-        gender = user.gender.value
-        op = ""  # Admin SS DS ?
-        response = "#%s %s@%s unknown %s %s %s %s:0 %s %s" % \
-                   (to_ws(room.name), nick, host, host, nick, gender, op, nick, NEWLINE)
-        self.socket_send(response)
 
-    def set_user_mode(self, user, room):
-        """Sets right MODE for specific user"""
-        nick = to_ws(user.name)
-        channel = to_ws("#" + room.name)
 
-        # Mark girl
-        if user.gender == Gender.FEMALE:
-            self.reply_mode(channel, "+v", nick)
 
-        # Mark operator
-        if user.name in room.admin_list:
-            self.reply_mode(channel, "+o", nick)
-
-        # Mark half-operator
-        if user.id == room.operator_id:
-            self.reply_mode(channel, "+h", nick)
-
-        # Mark room admin
-        if user.admin:
-            self.reply_mode(channel, "+A", nick)
 
     def handle_command(self, command, args):
         """ IRC command handlers """
-        def user_handler():
-            arguments = args.split(' ')
-            if len(arguments) == 4:
-                self.username = arguments[0]
-            else:
-                self.not_enough_arguments_reply(command)
 
-        def nick_handler():
-            self.nickname = args
-
-            # When NICK is received, perform login
-            try:
-                if self.password:
-                    self.chatapi.login(self.nickname, self.password)
-                else:
-                    # Todo Solve male/female problem
-                    self.chatapi.login_as_anonymous(self.nickname)
-
-                self.send_welcome_message()
-            except LoginError as e:
-                log.error(str(e))
-                # Todo: send wrong password reply
-
-        def pass_handler():
-            if args:
-                self.password = args[1:] if args[0] == ":" else args
 
         def list_handler():
             arguments = args.split(' ') if args else []
