@@ -16,6 +16,10 @@ object ChatCzGate {
     val NEWLINE = "\r\n"
     val VERSION = "1.0.1"
 
+    val IDLER_ENABLED = true //todo read from config
+    val IDLE_TIME = 1000 //todo read from config
+    val IDLER_STRINGS = listOf(".", "..") //todo read from config
+
     @JvmStatic
     fun main(args: Array<String>) {
         BasicConfigurator.configure();
@@ -31,4 +35,5 @@ object ChatCzGate {
             Thread(IrcLayer(connection)).start()
         }
     }
+
 }

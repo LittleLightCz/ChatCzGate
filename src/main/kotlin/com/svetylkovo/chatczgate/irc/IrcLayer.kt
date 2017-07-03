@@ -1,10 +1,13 @@
 package com.svetylkovo.chatczgate.irc
 
+import com.svetylkovo.chatczgate.ChatCzGate
+import com.svetylkovo.chatczgate.ChatCzGate.VERSION
 import com.svetylkovo.chatczgate.api.ChatApi
 import com.svetylkovo.chatczgate.beans.IrcCommand
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.beans.User
 import com.svetylkovo.chatczgate.events.ChatEvent
+import com.svetylkovo.chatczgate.extensions.toWhitespace
 import com.svetylkovo.rojo.Rojo
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -16,6 +19,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     private val log: Logger = LoggerFactory.getLogger(IrcLayer::class.java)
 
     private val reader = conn.getInputStream().reader().buffered()
+    private val writer = conn.getOutputStream().writer().buffered()
 
     val chatApi = ChatApi(this)
 
@@ -69,12 +73,82 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         log.info("IRC command: $command, args: $args")
 
         when(command) {
-            "QUIT" -> {
-                chatApi.logout()
-                run = false
-            }
+            "QUIT" -> handleQuit()
             else -> log.warn("Unrecognized command: $command")
         }
+    }
+
+    private fun handleQuit() {
+        chatApi.logout()
+        run = false
+    }
+
+    private fun socketSend(message: String) {
+        //TODO handle plugins:        data = self.plugins.process(PluginData(reply=response))
+        log.debug("Sending: $message")
+        writer.write("$message \n")
+    }
+
+    private fun replyJoin(name: String, channel: String) = socketSend(":$name JOIN $channel")
+
+    private fun replyPart(name: String, channel: String) = socketSend(":$name PART $channel")
+
+    private fun replyPrivmsg(sender: String, to: String, text: String) = socketSend(":$sender PRIVMSG $to :$text")
+
+    private fun replyNotice(channel: String, message: String) = socketSend(":$hostname NOTICE $channel :$message")
+
+    private fun replyNoticeAll(message: String) {
+        chatApi.getActiveRoomNames().forEach { replyNotice("#$it".toWhitespace(), message) }
+    }
+
+    private fun replyMode(channel: String, mode: String, nick: String) = socketSend(":$hostname MODE $channel $mode $nick")
+
+    private fun replyKick(channel: String, reason: String) = socketSend(":$hostname KICK $channel $nick")
+
+    private fun reply(responseNumber: Int, message: String) {
+        val formattedResp = String.format("%03d", responseNumber)
+        socketSend(":$hostname $formattedResp $nick $message")
+    }
+
+    private fun notEnoughArgsReply(commandName: String) = reply(461, "$commandName :Not enough parameters")
+
+    private fun sendMotd(text: String) = reply(372, ":- $text")
+
+    private fun sendWelcomeMessage() {
+        val loadedPlugins = "loaded..." //todo self.plugins.get_loaded_plugins_names()
+        val disabledPlugins = "disabled..." //todo self.plugins.get_disabled_plugins_names()
+
+        val welcomeMessage = """:
+        ____ _           _
+        / ___| |__   __ _| |_   ___ ____
+        | |   | '_ \ / _` | __| / __|_  /
+        | |___| | | | (_| | |_ | (__ / /
+        \____|_| |_|\__,_|\__(_)___/___|
+
+        ########################################
+
+        Welcome to the ChatCzGate ${VERSION}!
+
+        Website: https://github.com/LittleLightCz/ChatCzGate
+        Credits: Svetylk0, Imrija
+
+        Idler enabled: ${ChatCzGate.IDLER_ENABLED}
+        Idle time: ${ChatCzGate.IDLE_TIME}
+        Idler strings: ${ChatCzGate.IDLER_STRINGS.joinToString(",")}
+
+        Loaded plugins: $loadedPlugins
+        Disabled plugins: $disabledPlugins
+
+        Have fun! :-)
+        """
+
+        reply(1, welcomeMessage)
+        reply(2, ":You're running version $VERSION")
+        reply(3, ":")
+        reply(4, "")
+        reply(375, "Message of the day -")
+        sendMotd("With great power comes great responsibility ...")
+        reply(376, "$nick :End of MOTD command.")
     }
 
     override fun newMessage(room: Room, user: User, text: String, whisper: Boolean) {
@@ -100,4 +174,6 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     override fun kicked(room: Room) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
+
+
 }

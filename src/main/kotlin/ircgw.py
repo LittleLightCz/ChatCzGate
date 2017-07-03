@@ -12,107 +12,6 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
 
 
 
-
-    def socket_send(self, response):
-        """
-        The only method that should be used to send data through the socket
-
-        :param response: string
-            Message to be sent to the client
-        """
-        data = self.plugins.process(PluginData(reply=response))
-        for reply in data.result_replies:
-            log.debug("Sending: %s" % re.sub(NEWLINE + "$", "", reply))
-            with self._socket_lock:
-                self.request.send(str.encode(reply, encoding=ENCODING))
-
-    def reply_join(self, name, channel):
-        """ Send JOIN response to client """
-        response = ":%s JOIN %s %s" % (name, channel, NEWLINE)
-        self.socket_send(response)
-
-    def reply_part(self, name, channel):
-        """ Send PART response to client """
-        response = ":%s PART %s %s" % (name, channel, NEWLINE)
-        self.socket_send(response)
-
-    def reply_privmsg(self, sender, to, text):
-        """ Send PROVMSG response to client """
-        response = ":%s PRIVMSG %s :%s %s" % (sender, to, text, NEWLINE)
-        self.socket_send(response)
-
-    def reply_notice(self, channel, message):
-        """ Send NOTICE response to client """
-        response = ":%s NOTICE %s :%s %s" % (self.hostname, channel, message, NEWLINE)
-        self.socket_send(response)
-
-    def reply_notice_all(self, message):
-        """ Send NOTICE response to all active channels, that is user in """
-        for channel in self.chatapi.get_active_room_names():
-            self.reply_notice(to_ws("#"+channel), message)
-
-    def reply_mode(self, channel, mode, nick):
-        """ Send MODE response to client """
-        response = ":%s MODE %s %s %s %s" % (self.hostname, channel, mode, nick, NEWLINE)
-        self.socket_send(response)
-
-    def reply_kick(self, channel, reason):
-        """ Send KICK response to client """
-        response = ":%s KICK %s %s %s" % (self.hostname, channel, self.get_nick(), NEWLINE)
-        self.socket_send(response)
-
-    def reply(self, response_number, message):
-        """ Send response to client """
-        # TODO get server name
-        response = ":%s %03d %s %s %s" % (self.hostname, response_number, self.nickname, message, NEWLINE)
-        self.socket_send(response)
-
-    def not_enough_arguments_reply(self, command_name):
-        self.reply(461, "%s :Not enough parameters" % command_name)
-
-    def send_MOTD_text(self, text):
-        self.reply(372, ":- "+text)
-
-    def send_welcome_message(self):
-
-        loaded = self.plugins.get_loaded_plugins_names()
-        disabled = self.plugins.get_disabled_plugins_names()
-
-        disabled_plugins = "Disabled plugins: "+",".join(disabled) if disabled else ""
-
-        welcome = ''':
-          ____ _           _
-         / ___| |__   __ _| |_   ___ ____
-        | |   | '_ \ / _` | __| / __|_  /
-        | |___| | | | (_| | |_ | (__ / /
-         \____|_| |_|\__,_|\__(_)___/___|
-
-        ########################################
-
-        Welcome to the ChatCzGate %s!
-
-        Website: https://github.com/LittleLightCz/ChatCzGate
-        Credits: Svetylk0, Imrija
-
-        Idler enabled: %s
-        Idler seconds: %d
-        Idler strings: %s
-
-        Loaded plugins: %s
-        %s
-
-        Have fun! :-)
-        ''' % (VERSION, self.chatapi.idler_enabled, self.chatapi.idle_time,
-               ",".join(self.chatapi.idle_strings), ",".join(loaded), disabled_plugins)
-
-        self.reply(1, welcome)
-        self.reply(2, ":You're running version %s" % VERSION)
-        self.reply(3, ":")
-        self.reply(4, "")
-        self.reply(375, "Message of the day -")
-        self.send_MOTD_text("With great power comes great responsibility ...")
-        self.reply(376, self.get_nick() + " :End of MOTD command.")
-
     def send_who_user_info(self, room, user):
         nick = to_ws(user.name)
         host = self.hostname
@@ -250,9 +149,6 @@ class IRCServer(socketserver.StreamRequestHandler, ChatEvent):
                     self.chatapi.whisper(target, msg)
             except MessageError as e:
                 self.reply_privmsg('ChatCzGate', self.get_nick(), e)
-
-        def quit_handler():
-            self.chatapi.logout()
 
         def ping_handler():
             pong = ":%s PONG %s :%s %s" % (self.hostname, self.hostname, args, NEWLINE)
