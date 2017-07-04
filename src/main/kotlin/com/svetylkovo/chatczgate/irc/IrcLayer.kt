@@ -8,6 +8,7 @@ import com.svetylkovo.chatczgate.beans.IrcCommand
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.beans.User
 import com.svetylkovo.chatczgate.events.ChatEvent
+import com.svetylkovo.chatczgate.extensions.fromWhitespace
 import com.svetylkovo.chatczgate.extensions.toWhitespace
 import com.svetylkovo.rojo.Rojo
 import org.slf4j.Logger
@@ -38,6 +39,8 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     //TODO val self.plugins = Plugins(config)
 
     private val commandMatcher = Rojo.of(IrcCommand::class.java)
+    private val passMatcher = Rojo.matcher("^:?(.+)")
+    private val firstNonBlank = Rojo.matcher("^\\S+")
 
     override fun run() {
         try {
@@ -81,7 +84,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
             "NICK" -> handleNick(args)
             "USER" -> handleUser(args)
             "LIST" -> handleList()
-//            "JOIN" -> handleJoin(args)
+            "JOIN" -> handleJoin(args)
 //            "PART" -> handlePart(args)
 //            "WHO" -> handleWho(args)
 //            "WHOIS" -> handleWhois(args)
@@ -132,9 +135,9 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handlePass(args: String) {
-        Rojo.firstGroup("^:?(.+)", args).forEach {
-            password = it
-        }
+        passMatcher.firstGroup(args)
+                .findFirst()
+                .ifPresent { password = it }
     }
 
     private fun handleList() {
@@ -145,6 +148,34 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
         reply(323, ":End of /LIST")
     }
+
+    private fun handleJoin(args: String) {
+        firstNonBlank.find(args).ifPresent {
+            it.split(",")
+                .map { it.replaceFirst("#","") }
+                .forEach { roomName ->
+                    val room = chatApi.getRoomByName(roomName.fromWhitespace())
+
+                    if (room != null) {
+                        log.info("Joining room : ${room.name}")
+                        chatApi.join(room)
+
+                        socketSend(":$nick!$userName@$hostname JOIN #$roomName")
+                        reply(332, "#$roomName :${room.description}")
+
+                        val usersInRoom =  room.users
+                                .map { it.nick.toWhitespace() }
+                                .joinToString(" ")
+
+                        reply(353, "= #$roomName :$nick $usersInRoom")
+                        reply(366, "#$roomName :End of /NAMES list.")
+                    } else {
+                        log.error("Couldn't find the room for name: $roomName")
+                    }
+                }
+        }
+    }
+
 /*
 
         def part_handler():
@@ -162,27 +193,6 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
                     log.error("Couldn't find the room for name: ", room)
                     # TODO room not found
 
-        def join_handler():
-            arguments = args.split(' ')
-            log.debug(" join debug ")
-            rooms = arguments[0].split(',')
-            keys = arguments[1].split(',') if len(arguments) > 1 else []
-            for room in rooms:
-                # Remove leading hash sign
-                room = re.sub(r"^#", "", from_ws(room))
-                r = self.chatapi.get_room_by_name(room)
-                if r:
-                    log.info("Joining room : %s", r.name)
-                    self.chatapi.join(r)
-                    # TODO RPL_NOTOPIC
-                    room_name = to_ws(r.name)
-                    self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.get_nick(), self.username, self.hostname, room_name, NEWLINE))
-                    self.reply(332, "#%s :%s" % (room_name, r.description))
-                    users_in_room = ' '.join([to_ws(x.name) for x in r.user_list])
-                    self.reply(353, "= #%s :%s %s" % (room_name, self.get_nick(), users_in_room))
-                    self.reply(366, "#%s :End of /NAMES list." % room_name)
-                else:
-                    log.error("Couldn't find the room for name: {0}".format(room))
 
         def who_handler():
             arguments = args.split(' ')

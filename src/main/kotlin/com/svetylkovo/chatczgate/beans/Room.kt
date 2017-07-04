@@ -15,7 +15,7 @@ data class Room
         var lastMessage: String = "",
         var timestamp: Long = Date().time
 ) {
-    private var users = ArrayList<User>()
+    val users = ArrayList<User>()
 
     fun hasUser(user: User): Boolean {
         return users.find { it.uid == user.uid } != null
