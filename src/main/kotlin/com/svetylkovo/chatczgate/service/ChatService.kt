@@ -1,13 +1,14 @@
 package com.svetylkovo.chatczgate.service
 
-import com.svetylkovo.chatczgate.beans.AnonymousLogin
-import com.svetylkovo.chatczgate.beans.Login
+import com.fasterxml.jackson.databind.JsonMappingException
+import com.svetylkovo.chatczgate.beans.Gender
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.rest.ChatClient
 import com.svetylkovo.chatczgate.ssl.NaiveSSL
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.jackson.JacksonConverterFactory
@@ -27,6 +28,9 @@ class ChatService {
                                         .build()
                                 chain.proceed(request)
                             }
+//                            .addInterceptor(
+//                                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+//                            )
                             .sslSocketFactory(NaiveSSL.getSocketFactory(), NaiveSSL.trustManager)
                             .hostnameVerifier(NaiveSSL.hostnameVerifier)
                             .build()
@@ -44,16 +48,16 @@ class ChatService {
     }
 
     fun pingRoomUserTime(room: Room) {
-        client.pingRoomUserTime(room).execute()
+        client.pingRoomUserTime(room.roomId).execute()
     }
 
     fun getRoomText(room: Room) = client.getRoomText(room.roomId, room.chatIndex).bodyOrError()
 
-    fun getRoomList() = client.getRoomList().bodyOrError()
+    fun getRoomList() = client.getRoomList().bodyOrError()?.rooms
 
-    fun login(login: Login) = client.login(login).responseBodyString()
+    fun login(email: String, password: String) = client.login(email, password).responseBodyString()
 
-    fun loginAnonymously(anonymousLogin: AnonymousLogin) = client.loginAnonymously(anonymousLogin).responseBodyString()
+    fun loginAnonymously(user: String, gender: Gender) = client.loginAnonymously(user, gender.value).responseBodyString()
 
     fun getUserById(uid: Int) = client.getUser(uid).bodyOrError()?.user
 
@@ -76,7 +80,7 @@ class ChatService {
 
 }
 
-fun <T> Call<T>.bodyOrError(): T? {
+private fun <T> Call<T>.bodyOrError(): T? {
     val resp = this.execute()
     if (resp.isSuccessful) {
         return resp.body()
@@ -86,4 +90,4 @@ fun <T> Call<T>.bodyOrError(): T? {
     throw RuntimeException("Failed to parse the HTTP response: $errorBody")
 }
 
-fun Call<ResponseBody>.responseBodyString() = bodyOrError()?.string() ?: ""
+private fun Call<ResponseBody>.responseBodyString() = bodyOrError()?.string() ?: ""

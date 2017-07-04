@@ -17,6 +17,8 @@ import java.net.Socket
 
 class IrcLayer(conn: Socket) : Runnable, ChatEvent {
 
+    private val NEWLINE = "\r\n"
+
     private val log: Logger = LoggerFactory.getLogger(IrcLayer::class.java)
 
     private val reader = conn.getInputStream().reader().buffered()
@@ -74,10 +76,23 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
             log.info("Received PASS command")
         }
 
-        when(command) {
+        when (command) {
             "PASS" -> handlePass(args)
             "NICK" -> handleNick(args)
             "USER" -> handleUser(args)
+            "LIST" -> handleList()
+//            "JOIN" -> handleJoin(args)
+//            "PART" -> handlePart(args)
+//            "WHO" -> handleWho(args)
+//            "WHOIS" -> handleWhois(args)
+//            "PING" -> handlePing(args)
+//            "PRIVMSG" -> handlePrivmsg(args)
+            "OPER" -> handleOper(args)
+//            "MODE" -> handleMode(args)
+            "TOPIC" -> handleTopic(args)
+            "NAMES" -> handleNames(args)
+            "INVITE" -> handleInvite(args)
+//            "KICK" -> handleKick(args)
             "QUIT" -> handleQuit()
             else -> log.warn("Unrecognized command: $command")
         }
@@ -122,13 +137,182 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
     }
 
+    private fun handleList() {
+        //args not supported yet
+        reply(321, "Channel :Users  Name")
+        chatApi.getRoomList().forEach { room ->
+            reply(322, "#${room.name.toWhitespace()} ${room.usersCount} :${room.description}")
+        }
+        reply(323, ":End of /LIST")
+    }
 /*
 
+        def part_handler():
+            arguments = args.split(' ')
+            rooms = arguments[0].split(',')
+            for room in rooms:
+                # Remove leading hash sign
+                room = re.sub(r"^#", "", from_ws(room))
+                r = self.chatapi.get_active_room_by_name(room)
+                if r:
+                    log.info("Leaving room : %s", r.name)
+                    self.chatapi.part(r)
+                    self.reply_part(self.get_nick(), "#"+to_ws(room))
+                else:
+                    log.error("Couldn't find the room for name: ", room)
+                    # TODO room not found
+
+        def join_handler():
+            arguments = args.split(' ')
+            log.debug(" join debug ")
+            rooms = arguments[0].split(',')
+            keys = arguments[1].split(',') if len(arguments) > 1 else []
+            for room in rooms:
+                # Remove leading hash sign
+                room = re.sub(r"^#", "", from_ws(room))
+                r = self.chatapi.get_room_by_name(room)
+                if r:
+                    log.info("Joining room : %s", r.name)
+                    self.chatapi.join(r)
+                    # TODO RPL_NOTOPIC
+                    room_name = to_ws(r.name)
+                    self.socket_send(":%s!%s@%s JOIN #%s%s" % (self.get_nick(), self.username, self.hostname, room_name, NEWLINE))
+                    self.reply(332, "#%s :%s" % (room_name, r.description))
+                    users_in_room = ' '.join([to_ws(x.name) for x in r.user_list])
+                    self.reply(353, "= #%s :%s %s" % (room_name, self.get_nick(), users_in_room))
+                    self.reply(366, "#%s :End of /NAMES list." % room_name)
+                else:
+                    log.error("Couldn't find the room for name: {0}".format(room))
+
+        def who_handler():
+            arguments = args.split(' ')
+            room_name = re.sub(r"^#", "", from_ws(arguments[0]))
+            room = self.chatapi.get_active_room_by_name(room_name)
+            for user in room.user_list:
+                self.send_who_user_info(room, user)
+
+            self.reply(315, ":End of WHO list")
+
+            # Set user modes
+            for user in room.user_list:
+                self.set_user_mode(user, room)
+
+        def privmsg_handler():
+            match = re.match(r"(.+?)\s*:(.*)", args)
+            target, msg = match.groups()
+            target = from_ws(target)
+            try:
+                if target[0] == '#':  # send to channel
+                    room = self.chatapi.get_active_room_by_name(target[1:])
+                    self.chatapi.say(room, msg)
+                else:  # whisper
+                    self.chatapi.whisper(target, msg)
+            except MessageError as e:
+                self.reply_privmsg('ChatCzGate', self.get_nick(), e)
+
+        def ping_handler():
+            pong = ":%s PONG %s :%s %s" % (self.hostname, self.hostname, args, NEWLINE)
+            self.socket_send(pong)
+
+        def whois_handler():
+            m = next(re.finditer(r"[^ ]+", args), None)
+            if m:
+                nick = from_ws(m.group())
+                profile = self.chatapi.get_user_profile(nick)
+                if profile:
+                    self.reply_notice_all("=== WHOIS Profile ===")
+                    self.reply_notice_all("Anonym: {0}".format(profile.anonymous))
+                    self.reply_notice_all("Nick: {0}".format(profile.nick))
+
+                    if profile.age:
+                        self.reply_notice_all("Věk: {0}".format(profile.age))
+
+                    self.reply_notice_all("Pohlaví: {0}".format(profile.gender.name.title()))
+                    # self.reply_notice_all("Karma: {0}".format(profile.karma))
+                    # self.reply_notice_all("Registrace: {0}".format(profile.registration))
+                    # self.reply_notice_all("Naposledy: {0}".format(profile.last_seen))
+
+                    if profile.viewed:
+                        self.reply_notice_all("Profil zobrazen: {0}x".format(profile.viewed))
+
+                    # Temporarily removed because REST returns just small picture thumbnail URL
+                    # if profile.imageUrl:
+                    #     self.reply_notice_all("Profilovka: {0}".format(profile.imageUrl))
+
+                    self.reply_notice_all("Online: {0}".format(profile.online))
+
+                    if profile.rooms:
+                        channels = [to_ws("#"+room) for room in profile.rooms]
+                        self.reply_notice_all("Chatuje v: {0}".format(", ".join(channels)))
+
+                    if not profile.anonymous:
+                       self.reply_notice_all("Profil: {0}".format(profile.url))
+
+
+                    self.reply_notice_all("=== End Of WHOIS Profile ===")
+                else:
+                    self.reply_notice_all("WHOIS: Failed to get profile of: %s" % to_ws(nick))
+
+
+
+        def mode_handler():
+            m = next(re.finditer(r"#([^ ]+) \+(\w+) (.+)", args), None)
+            if m:
+                room_name, modes, nick = m.groups()
+                room = self.chatapi.get_active_room_by_name(from_ws(room_name))
+
+                if room:
+                    if "o" in modes:
+                        last_admin_id = room.operator_id
+                        self.chatapi.admin(room, from_ws(nick))
+                        # Now remove the half-operator from user, that was former half-operator
+                        user = UserDb.get_user_by_uid(last_admin_id)
+                        if user:
+                            self.reply_mode("#"+room_name, "-h", to_ws(user.name))
+                else:
+                    log.error("Failed to get room by name: "+room_name)
+
+
+        def kick_handler():
+            match = re.match(r"#(\S+)\s+(\S+)\s+:(.+)", args)
+
+            try:
+                if match:
+                    room_name = from_ws(match.group(1))
+                    user = from_ws(match.group(2))
+                    reason = match.group(3)
+
+                    room = self.chatapi.get_active_room_by_name(room_name)
+                    if room:
+                        self.chatapi.kick(room, user, reason)
+                    else:
+                        log.error("Failed to get room by name: "+room_name)
+            except:
+                msg = "Failed to kick user {0} from the room {1}!".format(user, room_name)
+                log.exception(msg)
+                self.reply_notice_all(msg)
  */
+    private fun handleOper(args: String) {
+        log.info("OPER command handler not implemented")
+    }
+
+    private fun handleTopic(args: String) {
+        log.info("TOPIC command handler not implemented")
+    }
+
+    private fun handleNames(args: String) {
+        log.info("NAMES command handler not implemented")
+    }
+
+    private fun handleInvite(args: String) {
+        log.info("INVITE command handler not implemented")
+    }
+
     private fun socketSend(message: String) {
         //TODO handle plugins:        data = self.plugins.process(PluginData(reply=response))
         log.debug("Sending: $message")
-        writer.write("$message \n")
+        writer.write("$message $NEWLINE")
+        writer.flush()
     }
 
     private fun replyJoin(name: String, channel: String) = socketSend(":$name JOIN $channel")

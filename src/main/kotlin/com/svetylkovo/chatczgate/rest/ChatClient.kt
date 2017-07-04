@@ -3,10 +3,7 @@ package com.svetylkovo.chatczgate.rest
 import com.svetylkovo.chatczgate.beans.*
 import okhttp3.ResponseBody
 import retrofit2.Call
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Path
+import retrofit2.http.*
 
 interface ChatClient {
 
@@ -22,23 +19,33 @@ interface ChatClient {
     @POST("/json/getHeader")
     fun pingHeader(): Call<Void>
 
+    @FormUrlEncoded
     @POST("/json/getRoomUserTime")
-    fun pingRoomUserTime(room: Room): Call<Void>
+    fun pingRoomUserTime(@Field("roomId") roomId: Int): Call<Void>
 
     @GET("/api/rooms")
-    fun getRoomList(): Call<List<Room>>
+    fun getRoomList(): Call<RestResponse>
 
+    @FormUrlEncoded
     @POST("/login")
-    fun login(login: Login): Call<ResponseBody>
+    fun login(@Field("email") email: String, @Field("password") password: String): Call<ResponseBody>
 
+    @FormUrlEncoded
     @POST("/login")
-    fun loginAnonymously(@Body anonymousLogin: AnonymousLogin): Call<ResponseBody>
+    fun loginAnonymously(@Field("user") user: String, @Field("sex") sex: String): Call<ResponseBody>
 
+    @FormUrlEncoded
     @POST("/json/getText")
-    fun sendRoomMessage(roomId: Int, chatIndex: Int, text: String? = null, userIdTo: Int = 0): Call<RestResponse>
+    fun sendRoomMessage(
+            @Field("roomId") roomId: Int,
+            @Field("chatIndex") chatIndex: Int,
+            @Field("text") text: String? = null,
+            @Field("userIdTo") userIdTo: Int = 0
+    ): Call<RestResponse>
 
+    @FormUrlEncoded
     @POST("/json/getText")
-    fun getRoomText(roomId: Int, chatIndex: Int): Call<RoomResponse>
+    fun getRoomText(@Field("roomId") roomId: Int, @Field("chatIndex") chatIndex: Int): Call<RoomResponse>
 
     @GET("/logout")
     fun logout(): Call<ResponseBody>

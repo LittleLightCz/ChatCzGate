@@ -13,7 +13,6 @@ object ChatCzGate {
     val IRC_HOSTNAME = "localhost"
 
     val ENCODING = "UTF-8"
-    val NEWLINE = "\r\n"
     val VERSION = "1.0.1"
 
     val IDLER_ENABLED = true //todo read from config

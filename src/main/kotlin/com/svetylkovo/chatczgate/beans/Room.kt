@@ -1,6 +1,7 @@
 package com.svetylkovo.chatczgate.beans
 
 import java.util.*
+import kotlin.collections.ArrayList
 
 data class Room
 (
@@ -9,8 +10,8 @@ data class Room
         var description: String,
         var usersCount: Int = 0,
         var operatorId: Int = -1,
-        var admins: List<String>,
-        var chatIndex: Int,
+        var admins: List<String> = ArrayList(),
+        var chatIndex: Int = -1,
         var lastMessage: String = "",
         var timestamp: Long = Date().time
 ) {

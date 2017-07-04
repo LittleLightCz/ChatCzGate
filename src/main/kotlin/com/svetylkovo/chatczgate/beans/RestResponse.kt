@@ -13,4 +13,5 @@ class RestResponse {
 
     //TODO check
     var room: RoomInfo? = null
+    val rooms: List<RoomsListItem>? = null
 }

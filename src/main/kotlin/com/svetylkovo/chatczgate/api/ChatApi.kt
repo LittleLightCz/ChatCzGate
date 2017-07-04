@@ -88,18 +88,21 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     fun getRoomList(): List<Room> {
         log.info("Downloading room list ...")
-        return service.getRoomList()?.sortedBy { it.name } ?: emptyList()
+        return service.getRoomList()
+                ?.map { it.toRoom() }
+                ?.sortedBy { it.name }
+                ?: emptyList()
     }
 
     fun login(user: String, password: String) {
         log.info("Logging as: $user")
-        val response = service.login(Login(user, password))
+        val response = service.login(user, password)
         loginCheck(response)
     }
 
     fun loginAnonymously(user: String, gender: Gender) {
         log.info("Logging anonymously as: $user (${gender.value})")
-        val response = service.loginAnonymously(AnonymousLogin(user, gender.value))
+        val response = service.loginAnonymously(user, gender)
         loginCheck(response)
     }
 
