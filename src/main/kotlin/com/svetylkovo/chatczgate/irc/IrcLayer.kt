@@ -40,6 +40,8 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
 
     private val commandMatcher = Rojo.of(IrcCommand::class.java)
     private val passMatcher = Rojo.matcher("^:?(.+)")
+    private val privmsgMatcher = Rojo.matcher("(.+?)\\s*:(.*)")
+    private val whoisMatcher = Rojo.matcher("[^ ]+")
     private val firstNonBlank = Rojo.matcher("^\\S+")
 
     override fun run() {
@@ -85,11 +87,11 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
             "USER" -> handleUser(args)
             "LIST" -> handleList()
             "JOIN" -> handleJoin(args)
-//            "PART" -> handlePart(args)
-//            "WHO" -> handleWho(args)
-//            "WHOIS" -> handleWhois(args)
-//            "PING" -> handlePing(args)
-//            "PRIVMSG" -> handlePrivmsg(args)
+            "PART" -> handlePart(args)
+            "WHO" -> handleWho(args)
+            "WHOIS" -> handleWhois(args)
+            "PING" -> handlePing(args)
+            "PRIVMSG" -> handlePrivmsg(args)
             "OPER" -> handleOper(args)
 //            "MODE" -> handleMode(args)
             "TOPIC" -> handleTopic(args)
@@ -176,93 +178,89 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
     }
 
+    private fun handlePart(args: String) {
+        firstNonBlank.find(args).ifPresent {
+            it.split(",").forEach { roomName ->
+                val room = chatApi.getRoomByName(roomName.fromWhitespace())
+                if (room != null) {
+                    log.info("Leaving room : ${room.name}")
+                    chatApi.part(room)
+                    replyPart(nick, "#$roomName")
+                } else {
+                    log.error("Couldn't find the room for name: $roomName")
+                }
+            }
+        }
+    }
+
+    private fun handleWho(args: String) {
+        firstNonBlank.find(args).ifPresent { roomName ->
+            val room = chatApi.getRoomByName(roomName.fromWhitespace())
+
+            room?.users?.forEach { user ->
+                sendWhoUserInfo(room, user)
+            }
+
+            reply(315, ":End of WHO list")
+
+            room?.users?.forEach { user ->
+                setUserMode(user, room)
+            }
+        }
+    }
+
+    private fun handlePrivmsg(args: String) {
+        privmsgMatcher.forEach(args) { target, message ->
+            try {
+                if (target.startsWith("#")) {
+                    val roomName = target.removePrefix("#").fromWhitespace()
+                    val room = chatApi.getActiveRoomByName(roomName)
+                    room?.let { chatApi.say(it, message) }
+                } else {
+                    chatApi.whisper(target.fromWhitespace(), message)
+                }
+            } catch (t: Throwable) {
+                replyPrivmsg("ChatCzGate", nick, t.message ?: "Error while trying to send the message")
+            }
+        }
+    }
+
+    private fun handlePing(args: String) = socketSend(":$hostname PONG $hostname :$args")
+
+    private fun handleWhois(args: String) {
+        whoisMatcher.find(args).ifPresent { nick ->
+            val userProfile = chatApi.getUserProfile(nick.fromWhitespace())
+            if (userProfile != null) {
+                val (user, profile) = userProfile
+
+                replyNoticeAll("=== WHOIS Profile ===")
+                replyNoticeAll("Anonym: ${user?.anonymous}")
+                replyNoticeAll("Nick: ${user?.nick}")
+
+                profile?.age?.let { replyNoticeAll("Věk: $it") }
+
+                replyNoticeAll("Pohlaví: ${user?.gender?.name}")
+
+                profile?.profileViewCount?.let { replyNoticeAll("Profil zobrazen: ${it}x") }
+
+                replyNoticeAll("Online: ${user?.online}")
+
+                user?.rooms?.let { rooms ->
+                    replyNoticeAll("Chatuje v: ${rooms.joinToString(", ").toWhitespace()}")
+                }
+
+                if (user?.anonymous == false) {
+                    replyNoticeAll("Profil: ${user?.profileUrl}")
+                }
+
+                replyNoticeAll("=== End Of WHOIS Profile ===")
+            } else {
+                replyNoticeAll("WHOIS: Failed to get profile of: $nick")
+            }
+        }
+    }
+
 /*
-
-        def part_handler():
-            arguments = args.split(' ')
-            rooms = arguments[0].split(',')
-            for room in rooms:
-                # Remove leading hash sign
-                room = re.sub(r"^#", "", from_ws(room))
-                r = self.chatapi.get_active_room_by_name(room)
-                if r:
-                    log.info("Leaving room : %s", r.name)
-                    self.chatapi.part(r)
-                    self.reply_part(self.get_nick(), "#"+to_ws(room))
-                else:
-                    log.error("Couldn't find the room for name: ", room)
-                    # TODO room not found
-
-
-        def who_handler():
-            arguments = args.split(' ')
-            room_name = re.sub(r"^#", "", from_ws(arguments[0]))
-            room = self.chatapi.get_active_room_by_name(room_name)
-            for user in room.user_list:
-                self.send_who_user_info(room, user)
-
-            self.reply(315, ":End of WHO list")
-
-            # Set user modes
-            for user in room.user_list:
-                self.set_user_mode(user, room)
-
-        def privmsg_handler():
-            match = re.match(r"(.+?)\s*:(.*)", args)
-            target, msg = match.groups()
-            target = from_ws(target)
-            try:
-                if target[0] == '#':  # send to channel
-                    room = self.chatapi.get_active_room_by_name(target[1:])
-                    self.chatapi.say(room, msg)
-                else:  # whisper
-                    self.chatapi.whisper(target, msg)
-            except MessageError as e:
-                self.reply_privmsg('ChatCzGate', self.get_nick(), e)
-
-        def ping_handler():
-            pong = ":%s PONG %s :%s %s" % (self.hostname, self.hostname, args, NEWLINE)
-            self.socket_send(pong)
-
-        def whois_handler():
-            m = next(re.finditer(r"[^ ]+", args), None)
-            if m:
-                nick = from_ws(m.group())
-                profile = self.chatapi.get_user_profile(nick)
-                if profile:
-                    self.reply_notice_all("=== WHOIS Profile ===")
-                    self.reply_notice_all("Anonym: {0}".format(profile.anonymous))
-                    self.reply_notice_all("Nick: {0}".format(profile.nick))
-
-                    if profile.age:
-                        self.reply_notice_all("Věk: {0}".format(profile.age))
-
-                    self.reply_notice_all("Pohlaví: {0}".format(profile.gender.name.title()))
-                    # self.reply_notice_all("Karma: {0}".format(profile.karma))
-                    # self.reply_notice_all("Registrace: {0}".format(profile.registration))
-                    # self.reply_notice_all("Naposledy: {0}".format(profile.last_seen))
-
-                    if profile.viewed:
-                        self.reply_notice_all("Profil zobrazen: {0}x".format(profile.viewed))
-
-                    # Temporarily removed because REST returns just small picture thumbnail URL
-                    # if profile.imageUrl:
-                    #     self.reply_notice_all("Profilovka: {0}".format(profile.imageUrl))
-
-                    self.reply_notice_all("Online: {0}".format(profile.online))
-
-                    if profile.rooms:
-                        channels = [to_ws("#"+room) for room in profile.rooms]
-                        self.reply_notice_all("Chatuje v: {0}".format(", ".join(channels)))
-
-                    if not profile.anonymous:
-                       self.reply_notice_all("Profil: {0}".format(profile.url))
-
-
-                    self.reply_notice_all("=== End Of WHOIS Profile ===")
-                else:
-                    self.reply_notice_all("WHOIS: Failed to get profile of: %s" % to_ws(nick))
-
 
 
         def mode_handler():

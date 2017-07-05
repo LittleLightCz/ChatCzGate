@@ -10,6 +10,9 @@ data class User(
         var adminId: Int?,
         var karma: Int
 ) {
+    val profileUrl
+        get() = "https://chat.cz/p/$nick"
+
     var online: Boolean? = null
     var rooms: List<String>? = null
 
