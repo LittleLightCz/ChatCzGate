@@ -4,9 +4,10 @@ import com.svetylkovo.chatczgate.ChatCzGate
 import com.svetylkovo.chatczgate.ChatCzGate.VERSION
 import com.svetylkovo.chatczgate.api.ChatApi
 import com.svetylkovo.chatczgate.beans.Gender
-import com.svetylkovo.chatczgate.beans.IrcCommand
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.beans.User
+import com.svetylkovo.chatczgate.beans.rojo.IrcCommand
+import com.svetylkovo.chatczgate.cache.UsersCache
 import com.svetylkovo.chatczgate.events.ChatEvent
 import com.svetylkovo.chatczgate.extensions.fromWhitespace
 import com.svetylkovo.chatczgate.extensions.toWhitespace
@@ -39,6 +40,8 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     //TODO val self.plugins = Plugins(config)
 
     private val commandMatcher = Rojo.of(IrcCommand::class.java)
+    private val kickMatcher = Rojo.matcher("#(\\S+)\\s+(\\S+)\\s+:(.+)")
+    private val modeMatcher = Rojo.matcher("#([^ ]+) \\+(\\w+) (.+)")
     private val passMatcher = Rojo.matcher("^:?(.+)")
     private val privmsgMatcher = Rojo.matcher("(.+?)\\s*:(.*)")
     private val whoisMatcher = Rojo.matcher("[^ ]+")
@@ -81,25 +84,29 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
             log.info("Received PASS command")
         }
 
-        when (command) {
-            "PASS" -> handlePass(args)
-            "NICK" -> handleNick(args)
-            "USER" -> handleUser(args)
-            "LIST" -> handleList()
-            "JOIN" -> handleJoin(args)
-            "PART" -> handlePart(args)
-            "WHO" -> handleWho(args)
-            "WHOIS" -> handleWhois(args)
-            "PING" -> handlePing(args)
-            "PRIVMSG" -> handlePrivmsg(args)
-            "OPER" -> handleOper(args)
-//            "MODE" -> handleMode(args)
-            "TOPIC" -> handleTopic(args)
-            "NAMES" -> handleNames(args)
-            "INVITE" -> handleInvite(args)
-//            "KICK" -> handleKick(args)
-            "QUIT" -> handleQuit()
-            else -> log.warn("Unrecognized command: $command")
+        try {
+            when (command) {
+                "PASS" -> handlePass(args)
+                "NICK" -> handleNick(args)
+                "USER" -> handleUser(args)
+                "LIST" -> handleList()
+                "JOIN" -> handleJoin(args)
+                "PART" -> handlePart(args)
+                "WHO" -> handleWho(args)
+                "WHOIS" -> handleWhois(args)
+                "PING" -> handlePing(args)
+                "PRIVMSG" -> handlePrivmsg(args)
+                "OPER" -> handleOper(args)
+                "MODE" -> handleMode(args)
+                "TOPIC" -> handleTopic(args)
+                "NAMES" -> handleNames(args)
+                "INVITE" -> handleInvite(args)
+                "KICK" -> handleKick(args)
+                "QUIT" -> handleQuit()
+                else -> log.warn("Unrecognized command: $command")
+            }
+        } catch (t: Throwable) {
+            log.error("Error during command handling!", t)
         }
     }
 
@@ -260,46 +267,39 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
     }
 
-/*
+    private fun handleMode(args: String) {
+        modeMatcher.forEach(args) { roomName, modes, nick ->
+            val room = chatApi.getActiveRoomByName(roomName.fromWhitespace())
 
+            if (room != null && modes.contains("o")) {
+                chatApi.admin(room, nick.fromWhitespace())
+                // Now remove the half-operator from user, that was former half-operator
+                UsersCache.getByUid(room.operatorId)?. let { user ->
+                    replyMode("#$roomName", "-h", user.nick.toWhitespace())
+                }
+            } else {
+                log.error("Failed to get room by name: $roomName")
+            }
+        }
+    }
 
-        def mode_handler():
-            m = next(re.finditer(r"#([^ ]+) \+(\w+) (.+)", args), None)
-            if m:
-                room_name, modes, nick = m.groups()
-                room = self.chatapi.get_active_room_by_name(from_ws(room_name))
+    private fun handleKick(args: String) {
+        kickMatcher.forEach(args) { roomName, user, reason ->
+            try {
+                val room = chatApi.getActiveRoomByName(roomName)
+                if (room != null) {
+                    chatApi.kick(room, user, reason)
+                } else {
+                    log.error("Failed to get room by name: $roomName")
+                }
+            } catch (t: Throwable) {
+                val message = "Failed to kick user $user from the room $roomName!"
+                log.error(message, t)
+                replyNoticeAll(message)
+            }
+        }
+    }
 
-                if room:
-                    if "o" in modes:
-                        last_admin_id = room.operator_id
-                        self.chatapi.admin(room, from_ws(nick))
-                        # Now remove the half-operator from user, that was former half-operator
-                        user = UserDb.get_user_by_uid(last_admin_id)
-                        if user:
-                            self.reply_mode("#"+room_name, "-h", to_ws(user.name))
-                else:
-                    log.error("Failed to get room by name: "+room_name)
-
-
-        def kick_handler():
-            match = re.match(r"#(\S+)\s+(\S+)\s+:(.+)", args)
-
-            try:
-                if match:
-                    room_name = from_ws(match.group(1))
-                    user = from_ws(match.group(2))
-                    reason = match.group(3)
-
-                    room = self.chatapi.get_active_room_by_name(room_name)
-                    if room:
-                        self.chatapi.kick(room, user, reason)
-                    else:
-                        log.error("Failed to get room by name: "+room_name)
-            except:
-                msg = "Failed to kick user {0} from the room {1}!".format(user, room_name)
-                log.exception(msg)
-                self.reply_notice_all(msg)
- */
     private fun handleOper(args: String) {
         log.info("OPER command handler not implemented")
     }
@@ -422,28 +422,37 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     override fun newMessage(room: Room, user: User, text: String, whisper: Boolean) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        if (user.nick != nick) {
+            val to = if (whisper) nick else "#${room.name}"
+            replyPrivmsg(user.nick.toWhitespace(), to.toWhitespace(), text)
+        }
     }
 
     override fun userJoined(room: Room, user: User) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        if (user.nick != nick) {
+            val nickName = user.nick.toWhitespace()
+            val channel = "#${room.name}".toWhitespace()
+
+            replyJoin(nickName, channel)
+            setUserMode(user, room)
+
+            if (user.anonymous) {
+                replyNotice(channel, "INFO: $nickName is anonymous")
+            }
+        }
     }
 
     override fun userLeft(room: Room, user: User) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        if (user.nick != nick) {
+            replyPart(user.nick.toWhitespace(), "#${room.name}".toWhitespace())
+        }
     }
 
-    override fun systemMessage(room: Room, message: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun systemMessage(room: Room, message: String) = replyNotice("#${room.name}".toWhitespace(), message)
 
-    override fun userMode(room: Room, user: User, mode: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun userMode(room: Room, user: User, mode: String) =
+            replyMode("#${room.name}".toWhitespace(), mode, user.nick.toWhitespace())
 
-    override fun kicked(room: Room) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
+    override fun kicked(room: Room) = replyKick("#${room.name}".toWhitespace(), "Reason not implemented yet!")
 
 }
