@@ -217,7 +217,7 @@ class ChatApi(val chatEvent: ChatEvent) {
             "" -> {
             } //ignore
             is String -> log.warn("Unknown system message: \n${mapper.writeValueAsString(message)}")
-            else -> {
+            null -> {
                 //Standard message
                 val user = UsersCache.getByUid(message.uid)
 
