@@ -1,5 +1,6 @@
 package com.svetylkovo.chatczgate.api
 
+import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.svetylkovo.chatczgate.beans.*
 import com.svetylkovo.chatczgate.cache.UsersCache
@@ -57,14 +58,25 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     @Synchronized
     private fun messagesCheck() {
+        var lastRoom: Room? = null
         try {
-            for(room in rooms) {
+            for (room in rooms) {
+                lastRoom = room
+
                 log.debug("Checking for new messages in: ${room.name}")
                 service.getRoomText(room)?.let { response ->
                     processRoomMessages(room, response)
                 }
                 triggerIdler(room)
             }
+        } catch (e: JsonMappingException) {
+            if (e.message?.startsWith("Can not deserialize instance of") == true) {
+                lastRoom?.let { room ->
+                    chatEvent.kicked(room)
+                    part(room)
+                }
+            }
+            log.error("JSON mapping failed", e)
         } catch (t: Throwable) {
             log.error("Error during new messages check!", t)
         }
@@ -128,11 +140,6 @@ class ChatApi(val chatEvent: ChatEvent) {
                 .first() != null
     }
 
-    private fun triggerIdler(room: Room) {
-        //TODO
-        log.warn("Idler not implemented yet!")
-    }
-
     private fun getIdlerMessage(lastMessage: String): String {
         val idleString = idleStrings.filter { it != lastMessage }
                                     .firstOrNull() ?: "..."
@@ -141,7 +148,7 @@ class ChatApi(val chatEvent: ChatEvent) {
         return idleString
     }
 
-    private fun idlerTrigger(room: Room) {
+    private fun triggerIdler(room: Room) {
         if (idlerEnabled && System.currentTimeMillis() - room.timestamp > idleTime) {
             val msg = getIdlerMessage(room.lastMessage)
             say(room, msg)
@@ -210,12 +217,12 @@ class ChatApi(val chatEvent: ChatEvent) {
             "admin" -> {
                 UsersCache.getByName(message.nick)?.let { user ->
                     updateRoomInfo(room)
-                    if (room.operatorId == user.uid)
+                    if (room.operatorId == user.uid) {
                         chatEvent.userMode(room, user, "+h")
+                    }
                 }
             }
-            "" -> {
-            } //ignore
+            "" -> {} //ignore
             is String -> log.warn("Unknown system message: \n${mapper.writeValueAsString(message)}")
             null -> {
                 //Standard message

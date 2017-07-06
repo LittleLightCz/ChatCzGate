@@ -65,7 +65,7 @@ class ChatService {
 
     fun logout() = client.logout().responseBodyString()
 
-    fun join(room: Room) = client.join(room.name)
+    fun join(room: Room) = client.join(room.name).responseBodyString()
 
     fun getRoomUsers(room: Room) = client.getRoomUsers(room.roomId).bodyOrError()?.users
 
