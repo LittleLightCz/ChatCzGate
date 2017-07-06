@@ -11,7 +11,7 @@ data class Room
         var usersCount: Int = 0,
         var operatorId: Int = -1,
         var admins: List<String> = ArrayList(),
-        var chatIndex: Int = -1,
+        var chatIndex: String = "",
         var lastMessage: String = "",
         var timestamp: Long = Date().time
 ) {

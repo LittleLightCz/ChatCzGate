@@ -1,6 +1,8 @@
 package com.svetylkovo.chatczgate.beans
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class RestResponse {
     var status: Int = 0
     var statusMessage: String = ""
@@ -11,7 +13,6 @@ class RestResponse {
     var admins: List<String>? = null
     var data: RoomData? = null
 
-    //TODO check
     var room: RoomInfo? = null
     val rooms: List<RoomsListItem>? = null
 }

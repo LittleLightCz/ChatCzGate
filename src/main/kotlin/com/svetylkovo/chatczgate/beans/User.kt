@@ -1,15 +1,27 @@
 package com.svetylkovo.chatczgate.beans
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 
-data class User(
-        var uid: Int,
-        var nick: String,
-        var gender: Gender,
-        var anonymous: Boolean,
-        var idle: Int,
-        var adminId: Int?,
-        var karma: Int
-) {
+@JsonIgnoreProperties(ignoreUnknown = true)
+class User {
+    @JsonProperty("id")
+    var uid: Int = 0
+
+    var nick: String = ""
+
+    @JsonProperty("sex")
+    var gender: Gender = Gender.MALE
+
+    @JsonProperty("anonym")
+    var anonymous: Boolean = true
+
+    var idle: Int = 0
+    var adminId: Int? = null
+    var karma: Int = 0
+    var timeAccess: String = "Unknown"
+    var friend: Int = 0
+
     val profileUrl
         get() = "https://chat.cz/p/$nick"
 

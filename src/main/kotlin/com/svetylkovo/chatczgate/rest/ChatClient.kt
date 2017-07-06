@@ -38,20 +38,20 @@ interface ChatClient {
     @POST("/json/getText")
     fun sendRoomMessage(
             @Field("roomId") roomId: Int,
-            @Field("chatIndex") chatIndex: Int,
+            @Field("chatIndex") chatIndex: String,
             @Field("text") text: String? = null,
             @Field("userIdTo") userIdTo: Int = 0
     ): Call<RestResponse>
 
     @FormUrlEncoded
     @POST("/json/getText")
-    fun getRoomText(@Field("roomId") roomId: Int, @Field("chatIndex") chatIndex: Int): Call<RoomResponse>
+    fun getRoomText(@Field("roomId") roomId: Int, @Field("chatIndex") chatIndex: String): Call<RestResponse>
 
     @GET("/logout")
     fun logout(): Call<ResponseBody>
 
-    @GET("/logout")
-    fun join(name: String)
+    @GET("/{roomName}")
+    fun join(@Path("roomName") name: String): Call<ResponseBody>
 
     @GET("/api/room/{id}/users")
     fun getRoomUsers(@Path("id") roomId: Int): Call<RestResponse>

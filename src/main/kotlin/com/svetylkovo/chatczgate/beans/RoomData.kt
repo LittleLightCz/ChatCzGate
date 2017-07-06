@@ -1,7 +1,10 @@
 package com.svetylkovo.chatczgate.beans
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 
-data class RoomData(
-        val index: Int,
-        val data: List<RoomMessage>
-)
+@JsonIgnoreProperties
+class RoomData {
+    val index: String = ""
+    val data: List<RoomMessage> = emptyList()
+    val user: List<User> = emptyList()
+}

@@ -60,8 +60,9 @@ class ChatApi(val chatEvent: ChatEvent) {
         try {
             for(room in rooms) {
                 log.debug("Checking for new messages in: ${room.name}")
-                val response = service.getRoomText(room)
-                processRoomMessages(room, response)
+                service.getRoomText(room)?.let { response ->
+                    processRoomMessages(room, response)
+                }
                 triggerIdler(room)
             }
         } catch (t: Throwable) {
@@ -129,6 +130,7 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     private fun triggerIdler(room: Room) {
         //TODO
+        log.warn("Idler not implemented yet!")
     }
 
     private fun getIdlerMessage(lastMessage: String): String {
@@ -170,18 +172,18 @@ class ChatApi(val chatEvent: ChatEvent) {
     }
 
     @Synchronized
-    private fun  processRoomMessages(room: Room, resp: RoomResponse?) {
-        if (resp?.success != null) {
+    private fun  processRoomMessages(room: Room, resp: RestResponse) {
+        if (resp.status == 200) {
             resp.data?.index?.let { room.chatIndex = it }
             resp.data?.data?.forEach { processMessage(room, it)}
         } else {
-            when(resp?.statusMessage) {
+            when(resp.statusMessage) {
                 "User in room NOT_FOUND" -> {
                     chatEvent.kicked(room)
                     removeRoom(room)
                 }
                 else -> {
-                    log.error("Failed to get new messages: ${resp?.statusMessage}")
+                    log.error("Failed to get new messages: ${resp.statusMessage}")
                 }
             }
         }
@@ -189,21 +191,22 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     @Synchronized
     private fun processMessage(room: Room, message: RoomMessage) {
-        when(message.s){
+        when (message.s) {
             "enter" -> {
-                val user = message.user
-                UsersCache.addUser(user)
-                room.addUser(user)
-                chatEvent.userJoined(room, user)
+                message.user?.let { user ->
+                    UsersCache.addUser(user)
+                    room.addUser(user)
+                    chatEvent.userJoined(room, user)
+                }
             }
-            "leave","auto_leave" -> {
+            "leave", "auto_leave" -> {
                 room.getUserByUid(message.uid)?.let { user ->
                     room.removeUser(user)
                     chatEvent.userLeft(room, user)
                 }
             }
             "cli" -> chatEvent.systemMessage(room, message.t)
-            "user","friend" -> UsersCache.addUser(message.user)
+            "user", "friend", "userSetting" -> message.user?.let(UsersCache::addUser)
             "admin" -> {
                 UsersCache.getByName(message.nick)?.let { user ->
                     updateRoomInfo(room)
@@ -211,6 +214,8 @@ class ChatApi(val chatEvent: ChatEvent) {
                         chatEvent.userMode(room, user, "+h")
                 }
             }
+            "" -> {
+            } //ignore
             is String -> log.warn("Unknown system message: \n${mapper.writeValueAsString(message)}")
             else -> {
                 //Standard message
@@ -283,18 +288,20 @@ class ChatApi(val chatEvent: ChatEvent) {
         val msg = toUser?.let { user -> "/w $user $text" } ?: text
 
         log.debug("[${room.roomId},$toUser] Sending: ${msg}")
-        service.say(room, msg)
+        val resp = service.say(room, msg)
 
-        room.timestamp = System.currentTimeMillis()
-        room.lastMessage = text
+        resp?.data?.let { roomData ->
+            room.timestamp = System.currentTimeMillis()
+            room.lastMessage = text
 
-        //TODO debug this:
-//        if room.chat_index == json_data["data"]["index"]:
-//        # Room's chat_index should be always different!
-//        raise MessageError("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
-//        else:
-//        # Process new messages, if any from the response
-//        self._process_room_messages_from_json(json_data, room)
+            if (room.chatIndex == roomData.index) {
+                // Room's chat_index should be always different!
+                throw RuntimeException("Your message probably wasn't sent! If you are an anonymous user, you can send only one message per 10 seconds!")
+            } else {
+                // Process new messages, if there are any in the response
+                processRoomMessages(room, resp)
+            }
+        }
     }
 
     fun updateRoomInfo(room: Room) {

@@ -74,7 +74,7 @@ class ChatService {
     fun part(room: Room) = client.part(room.roomId).responseBodyString()
 
     fun say(room: Room, msg: String) =
-            client.sendRoomMessage(room.roomId, room.chatIndex, msg).bodyOrError()?.room
+            client.sendRoomMessage(room.roomId, room.chatIndex, msg).bodyOrError()
 
     fun getRoomInfo(room: Room) = client.getRoomInfo(room.roomId).bodyOrError()?.room
 

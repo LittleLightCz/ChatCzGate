@@ -187,7 +187,8 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
 
     private fun handlePart(args: String) {
         firstNonBlank.find(args).ifPresent {
-            it.split(",").forEach { roomName ->
+            it.split(",").forEach { channel ->
+                val roomName = channel.removePrefix("#")
                 val room = chatApi.getRoomByName(roomName.fromWhitespace())
                 if (room != null) {
                     log.info("Leaving room : ${room.name}")
@@ -201,7 +202,8 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handleWho(args: String) {
-        firstNonBlank.find(args).ifPresent { roomName ->
+        firstNonBlank.find(args).ifPresent { channel ->
+            val roomName = channel.removePrefix("#")
             val room = chatApi.getRoomByName(roomName.fromWhitespace())
 
             room?.users?.forEach { user ->
