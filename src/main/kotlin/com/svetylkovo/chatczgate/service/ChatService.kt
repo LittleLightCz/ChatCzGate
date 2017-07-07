@@ -1,6 +1,5 @@
 package com.svetylkovo.chatczgate.service
 
-import com.fasterxml.jackson.databind.JsonMappingException
 import com.svetylkovo.chatczgate.beans.Gender
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.rest.ChatClient
@@ -8,7 +7,6 @@ import com.svetylkovo.chatczgate.ssl.NaiveSSL
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.jackson.JacksonConverterFactory

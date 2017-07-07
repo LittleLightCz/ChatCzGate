@@ -2,7 +2,6 @@ package com.svetylkovo.chatczgate.cache
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.svetylkovo.chatczgate.beans.User
-import com.svetylkovo.chatczgate.rest.ChatClient
 import com.svetylkovo.chatczgate.service.ChatService
 import java.util.*
 

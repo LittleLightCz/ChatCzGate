@@ -3,7 +3,7 @@ package com.svetylkovo.chatczgate.beans
 import java.util.*
 import kotlin.collections.ArrayList
 
-data class Room
+class Room
 (
         val roomId: Int,
         var name: String,

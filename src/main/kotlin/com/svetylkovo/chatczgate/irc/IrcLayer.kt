@@ -1,16 +1,18 @@
 package com.svetylkovo.chatczgate.irc
 
-import com.svetylkovo.chatczgate.ChatCzGate
 import com.svetylkovo.chatczgate.ChatCzGate.VERSION
 import com.svetylkovo.chatczgate.api.ChatApi
 import com.svetylkovo.chatczgate.beans.Gender
 import com.svetylkovo.chatczgate.beans.Room
 import com.svetylkovo.chatczgate.beans.User
 import com.svetylkovo.chatczgate.beans.rojo.IrcCommand
+import com.svetylkovo.chatczgate.beans.rojo.PrivmsgCommand
 import com.svetylkovo.chatczgate.cache.UsersCache
+import com.svetylkovo.chatczgate.config.Config
 import com.svetylkovo.chatczgate.events.ChatEvent
 import com.svetylkovo.chatczgate.extensions.fromWhitespace
 import com.svetylkovo.chatczgate.extensions.toWhitespace
+import com.svetylkovo.chatczgate.plugins.Plugins
 import com.svetylkovo.rojo.Rojo
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -43,7 +45,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     private val kickMatcher = Rojo.matcher("#(\\S+)\\s+(\\S+)\\s+:(.+)")
     private val modeMatcher = Rojo.matcher("#([^ ]+) \\+(\\w+) (.+)")
     private val passMatcher = Rojo.matcher("^:?(.+)")
-    private val privmsgMatcher = Rojo.matcher("(.+?)\\s*:(.*)")
+    private val privmsgMatcher = Rojo.of(PrivmsgCommand::class.java)
     private val whoisMatcher = Rojo.matcher("[^ ]+")
     private val firstNonBlank = Rojo.matcher("^\\S+")
 
@@ -85,7 +87,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
 
         try {
-            when (command) {
+            when (command.toUpperCase()) {
                 "PASS" -> handlePass(args)
                 "NICK" -> handleNick(args)
                 "USER" -> handleUser(args)
@@ -219,8 +221,11 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handlePrivmsg(args: String) {
-        privmsgMatcher.forEach(args) { target, message ->
+        privmsgMatcher.match(args).ifPresent { command ->
             try {
+                Plugins.processPrivmsg(command, this)
+                val (target, message) = command
+
                 if (target.startsWith("#")) {
                     val roomName = target.removePrefix("#").fromWhitespace()
                     val room = chatApi.getActiveRoomByName(roomName)
@@ -259,7 +264,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
                 }
 
                 if (user?.anonymous == false) {
-                    replyNoticeAll("Profil: ${user?.profileUrl}")
+                    replyNoticeAll("Profil: ${user.profileUrl}")
                 }
 
                 replyNoticeAll("=== End Of WHOIS Profile ===")
@@ -303,63 +308,60 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handleOper(args: String) {
-        log.info("OPER command handler not implemented")
+        log.info("OPER command handler not implemented. Arguments: ${args}")
     }
 
     private fun handleTopic(args: String) {
-        log.info("TOPIC command handler not implemented")
+        log.info("TOPIC command handler not implemented. Arguments: ${args}")
     }
 
     private fun handleNames(args: String) {
-        log.info("NAMES command handler not implemented")
+        log.info("NAMES command handler not implemented. Arguments: ${args}")
     }
 
     private fun handleInvite(args: String) {
-        log.info("INVITE command handler not implemented")
+        log.info("INVITE command handler not implemented. Arguments: ${args}")
     }
 
     private fun socketSend(message: String) {
-        //TODO handle plugins:        data = self.plugins.process(PluginData(reply=response))
         log.debug("Sending: $message")
         writer.write("$message $NEWLINE")
         writer.flush()
     }
 
-    private fun replyJoin(name: String, channel: String) = socketSend(":$name JOIN $channel")
+    fun replyJoin(name: String, channel: String) = socketSend(":$name JOIN $channel")
 
-    private fun replyPart(name: String, channel: String) = socketSend(":$name PART $channel")
+    fun replyPart(name: String, channel: String) = socketSend(":$name PART $channel")
 
-    private fun replyPrivmsg(sender: String, to: String, text: String) = socketSend(":$sender PRIVMSG $to :$text")
+    fun replyPrivmsg(sender: String, to: String, text: String) = socketSend(":$sender PRIVMSG $to :$text")
 
-    private fun replyNotice(channel: String, message: String) = socketSend(":$hostname NOTICE $channel :$message")
+    fun replyNotice(channel: String, message: String) = socketSend(":$hostname NOTICE $channel :$message")
 
-    private fun replyNoticeAll(message: String) {
+    fun replyNoticeAll(message: String) {
         chatApi.getActiveRoomNames().forEach { replyNotice("#$it".toWhitespace(), message) }
     }
 
-    private fun replyMode(channel: String, mode: String, nick: String) = socketSend(":$hostname MODE $channel $mode $nick")
+    fun replyMode(channel: String, mode: String, nick: String) = socketSend(":$hostname MODE $channel $mode $nick")
 
-    private fun replyKick(channel: String, reason: String) = socketSend(":$hostname KICK $channel $nick")
+    fun replyKick(channel: String, reason: String) = socketSend(":$hostname KICK $channel $nick $reason")
+
+    fun notEnoughArgsReply(commandName: String) = reply(461, "$commandName :Not enough parameters")
 
     private fun reply(responseNumber: Int, message: String) {
         val formattedResp = String.format("%03d", responseNumber)
         socketSend(":$hostname $formattedResp $nick $message")
     }
 
-    private fun notEnoughArgsReply(commandName: String) = reply(461, "$commandName :Not enough parameters")
-
     private fun sendMotd(text: String) = reply(372, ":- $text")
 
     private fun sendWelcomeMessage() {
-        val loadedPlugins = "loaded..." //todo self.plugins.get_loaded_plugins_names()
-        val disabledPlugins = "disabled..." //todo self.plugins.get_disabled_plugins_names()
 
         val welcomeMessage = """:
-        ____ _           _
-        / ___| |__   __ _| |_   ___ ____
+          ____ _           _
+        /  ___| |__   __ _| |_   ___ ____
         | |   | '_ \ / _` | __| / __|_  /
         | |___| | | | (_| | |_ | (__ / /
-        \____|_| |_|\__,_|\__(_)___/___|
+         \____|_| |_|\__,_|\__(_)___/___|
 
         ########################################
 
@@ -368,12 +370,12 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         Website: https://github.com/LittleLightCz/ChatCzGate
         Credits: Svetylk0, Imrija
 
-        Idler enabled: ${ChatCzGate.IDLER_ENABLED}
-        Idle time: ${ChatCzGate.IDLE_TIME}
-        Idler strings: ${ChatCzGate.IDLER_STRINGS.joinToString(",")}
+        Idler enabled: ${Config.IDLER_ENABLED}
+        Idler minutes: ${Config.MAX_IDLE_MINUTES}
+        Idle strings: ${Config.IDLE_STRINGS.joinToString(", ")}
 
-        Loaded plugins: $loadedPlugins
-        Disabled plugins: $disabledPlugins
+        ${Plugins.getLoadedPluginsInfo()}
+        ${Plugins.getDisabledPluginsInfo()}
 
         Have fun! :-)
         """
@@ -458,3 +460,4 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     override fun kicked(room: Room) = replyKick("#${room.name}".toWhitespace(), "Reason not implemented yet!")
 
 }
+

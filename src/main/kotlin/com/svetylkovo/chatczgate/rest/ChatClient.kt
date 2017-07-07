@@ -1,6 +1,6 @@
 package com.svetylkovo.chatczgate.rest
 
-import com.svetylkovo.chatczgate.beans.*
+import com.svetylkovo.chatczgate.beans.RestResponse
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.*

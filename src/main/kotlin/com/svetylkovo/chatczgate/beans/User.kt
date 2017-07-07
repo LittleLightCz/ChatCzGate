@@ -13,8 +13,13 @@ class User {
     @JsonProperty("sex")
     var gender: Gender = Gender.MALE
 
-    @JsonProperty("anonym")
+    //ambiguous mapping
     var anonymous: Boolean = true
+    var anonym
+        get() = anonymous
+        set(value) {
+            anonymous = value
+        }
 
     var idle: Int = 0
     var adminId: Int? = null
