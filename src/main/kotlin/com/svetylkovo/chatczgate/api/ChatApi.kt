@@ -8,6 +8,7 @@ import com.svetylkovo.chatczgate.config.Config
 import com.svetylkovo.chatczgate.config.Config.IDLER_ENABLED
 import com.svetylkovo.chatczgate.config.Config.MAX_IDLE_MINUTES
 import com.svetylkovo.chatczgate.events.ChatEvent
+import com.svetylkovo.chatczgate.plugins.Plugins
 import com.svetylkovo.chatczgate.service.ChatService
 import org.apache.commons.lang3.StringEscapeUtils
 import org.jsoup.Jsoup
@@ -202,6 +203,9 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     @Synchronized
     private fun processMessage(room: Room, message: RoomMessage) {
+
+        Plugins.processRoomMessage(message)
+
         when (message.s) {
             "enter" -> {
                 message.user?.let { user ->

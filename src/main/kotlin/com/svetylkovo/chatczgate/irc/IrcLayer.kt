@@ -39,8 +39,6 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
 
     var run = true
 
-    //TODO val self.plugins = Plugins(config)
-
     private val commandMatcher = Rojo.of(IrcCommand::class.java)
     private val kickMatcher = Rojo.matcher("#(\\S+)\\s+(\\S+)\\s+:(.+)")
     private val modeMatcher = Rojo.matcher("#([^ ]+) \\+(\\w+) (.+)")

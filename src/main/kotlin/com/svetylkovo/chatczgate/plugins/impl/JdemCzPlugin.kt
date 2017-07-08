@@ -1,5 +1,6 @@
 package com.svetylkovo.chatczgate.plugins.impl
 
+import com.svetylkovo.chatczgate.beans.RoomMessage
 import com.svetylkovo.chatczgate.beans.rojo.PrivmsgCommand
 import com.svetylkovo.chatczgate.irc.IrcLayer
 import com.svetylkovo.chatczgate.plugins.Plugin
@@ -48,4 +49,5 @@ class JdemCzPlugin : Plugin {
         }
     }
 
+    override fun processRoomMessage(message: RoomMessage) {}
 }

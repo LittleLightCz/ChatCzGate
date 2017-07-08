@@ -1,5 +1,6 @@
 package com.svetylkovo.chatczgate.plugins
 
+import com.svetylkovo.chatczgate.beans.RoomMessage
 import com.svetylkovo.chatczgate.beans.rojo.PrivmsgCommand
 import com.svetylkovo.chatczgate.config.Config
 import com.svetylkovo.chatczgate.irc.IrcLayer
@@ -32,4 +33,5 @@ object Plugins {
             .joinToString(", ")
 
     fun processPrivmsg(privmsg: PrivmsgCommand, irc: IrcLayer) = enabledPlugins.forEach { it.processPrivmsg(privmsg, irc) }
+    fun processRoomMessage(message: RoomMessage) = enabledPlugins.forEach { it.processRoomMessage(message) }
 }
