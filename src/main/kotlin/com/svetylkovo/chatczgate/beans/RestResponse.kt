@@ -10,7 +10,7 @@ class RestResponse {
     var profile: Profile? = null
     var user: User? = null
     var users: List<User>? = null
-    var admins: List<String>? = null
+    var admins: List<User>? = null
     var data: RoomData? = null
 
     var room: RoomInfo? = null

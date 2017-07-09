@@ -206,6 +206,9 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
             val roomName = channel.removePrefix("#")
             val room = chatApi.getRoomByName(roomName.fromWhitespace())
 
+            //update room users
+            room?.let { chatApi.updateRoomInfo(it) }
+
             room?.users?.forEach { user ->
                 sendWhoUserInfo(room, user)
             }
@@ -408,8 +411,9 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
 
         // Mark operator
-        if (room.admins.contains(user.nick))
+        if (room.admins.contains(user.nick)) {
             replyMode(channel, "+o", nick)
+        }
 
         // Mark half-operator
         if (user.uid == room.operatorId) {
@@ -420,7 +424,6 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         if (user.adminId != null) {
             replyMode(channel, "+A", nick)
         }
-
     }
 
     override fun newMessage(room: Room, user: User, text: String, whisper: Boolean) {

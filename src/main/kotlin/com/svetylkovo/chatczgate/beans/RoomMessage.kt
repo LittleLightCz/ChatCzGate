@@ -12,8 +12,6 @@ class RoomMessage {
     var ts: Long = 0
     var w: String? = null
 
-    var smile: List<String> = emptyList()
-
     var to: Int = 0
     var user: User? = null
     var nick: String = ""

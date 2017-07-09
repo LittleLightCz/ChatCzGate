@@ -1,2 +1,4 @@
+.mvn/
 .idea/
 target/
+log.out

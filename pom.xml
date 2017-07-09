@@ -6,7 +6,7 @@
 
     <groupId>com.svetylkovo</groupId>
     <artifactId>ChatCzGate</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 
     <build>
         <sourceDirectory>src/main/kotlin</sourceDirectory>
@@ -32,6 +32,21 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <finalName>ChatCzGate</finalName>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.svetylkovo.chatczgate.ChatCzGate</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
             </plugin>
         </plugins>
     </build>

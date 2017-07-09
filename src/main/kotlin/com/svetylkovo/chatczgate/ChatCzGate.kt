@@ -3,6 +3,7 @@ package com.svetylkovo.chatczgate
 import com.svetylkovo.chatczgate.config.Config
 import com.svetylkovo.chatczgate.irc.IrcLayer
 import org.apache.log4j.BasicConfigurator
+import org.apache.log4j.PropertyConfigurator
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ServerSocket
@@ -15,7 +16,7 @@ object ChatCzGate {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        BasicConfigurator.configure();
+        PropertyConfigurator.configure("log4j.properties");
 
         val port = Config.IRC_PORT
 

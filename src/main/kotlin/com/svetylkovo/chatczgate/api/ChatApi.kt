@@ -282,7 +282,7 @@ class ChatApi(val chatEvent: ChatEvent) {
         service.getRoomUsers(room)?.forEach(room::addUser)
 
         log.debug("Getting admin list for room: ${room.name}")
-        room.admins = service.getRoomAdmins(room) ?: emptyList()
+        room.admins = service.getRoomAdmins(room)?.map { it.nick } ?: emptyList()
 
         rooms.add(room)
         usersCheck()
@@ -325,6 +325,16 @@ class ChatApi(val chatEvent: ChatEvent) {
             room.description = info.description ?: ""
             room.operatorId = info.adminUserId ?: -1
         }
+
+        service.getRoomUsers(room)?.let { users ->
+            users.forEach { user ->
+                if (!room.hasUser(user)) {
+                    room.addUser(user)
+                }
+            }
+        }
+
+        room.admins = service.getRoomAdmins(room)?.map { it.nick } ?: emptyList()
     }
 }
 
