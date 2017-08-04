@@ -207,7 +207,7 @@ class SmileysPlugin : Plugin {
             "Žárovka" to listOf(163)
         )
 
-    val smileyMatcher = Rojo.matcher("\\*\\d+\\*")
+    val smileyMatcher = Rojo.matcher("\\*(\\d+)\\*")
 
     override fun init(config: Ini) {
         enabled = config.get("Smileys", "enabled")?.toBoolean() ?: false
@@ -216,8 +216,8 @@ class SmileysPlugin : Plugin {
     override fun processPrivmsg(privmsg: PrivmsgCommand, irc: IrcLayer) {}
 
     override fun processRoomMessage(message: RoomMessage) {
-        message.s?.let {
-            message.t = smileyMatcher.replace(message.t, this::replaceSmiley)
+        if (message.s == null) {
+            message.t = smileyMatcher.replaceGroup(message.t, this::replaceSmiley)
         }
     }
 
@@ -226,11 +226,11 @@ class SmileysPlugin : Plugin {
 
         for ((smileyText, values) in smileys) {
             if (values.contains(smileyNum)) {
-                return smileyText
+                return "*$smileyText*"
             }
         }
 
-        return smiley
+        return "*$smiley*"
     }
 
 }
