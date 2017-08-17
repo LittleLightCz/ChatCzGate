@@ -209,7 +209,6 @@ class ChatApi(val chatEvent: ChatEvent) {
         when (message.s) {
             "enter" -> {
                 message.user?.let { user ->
-                    UsersCache.addUser(user)
                     room.addUser(user)
                     chatEvent.userJoined(room, user)
                 }
@@ -221,7 +220,7 @@ class ChatApi(val chatEvent: ChatEvent) {
                 }
             }
             "cli" -> chatEvent.systemMessage(room, message.t)
-            "user", "friend", "userSetting" -> message.user?.let(UsersCache::addUser)
+            "user", "friend", "userSetting" -> {}
             "admin" -> {
                 UsersCache.getByName(message.nick)?.let { user ->
                     updateRoomInfo(room)

@@ -2,7 +2,6 @@ package com.svetylkovo.chatczgate
 
 import com.svetylkovo.chatczgate.config.Config
 import com.svetylkovo.chatczgate.irc.IrcLayer
-import org.apache.log4j.BasicConfigurator
 import org.apache.log4j.PropertyConfigurator
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
