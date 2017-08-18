@@ -110,7 +110,7 @@ class ChatApi(val chatEvent: ChatEvent) {
                             ?.forEach { message ->
                                 message.userFromUid?.let { uid ->
                                     UsersCache.getByUid(uid)?.let { user ->
-                                        chatEvent.newPrivateMessage(user, "[VZKAZ] ${message.text}")
+                                        chatEvent.newPrivateMessage(user, "[STORED MESSAGE] ${message.text}")
                                     }
                                 }
                             }

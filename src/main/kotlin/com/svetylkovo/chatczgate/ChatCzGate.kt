@@ -11,7 +11,7 @@ import java.net.ServerSocket
 object ChatCzGate {
     private val log: Logger = LoggerFactory.getLogger(ChatCzGate::class.java)
 
-    val VERSION = "1.0.1"
+    val VERSION = "1.0.2"
 
     @JvmStatic
     fun main(args: Array<String>) {
