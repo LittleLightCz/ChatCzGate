@@ -7,7 +7,7 @@ import java.util.*
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 class StoredMessage {
-    private val TIME_CREATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss zzz"
+    val TIME_CREATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss zzz"
 
     @JsonProperty("from_lo")
     var fromYourself = true
@@ -16,7 +16,7 @@ class StoredMessage {
     var userFromUid: Int? = null
 
     @JsonProperty("time_create")
-    private var timeCreate: String? = null
+    var timeCreate: String? = null
 
     @JsonProperty("whisp")
     var text = ""

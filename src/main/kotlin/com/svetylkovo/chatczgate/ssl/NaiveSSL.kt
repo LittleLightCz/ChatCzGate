@@ -5,7 +5,7 @@ import javax.net.ssl.*
 
 object NaiveSSL {
 
-    val hostnameVerifier = HostnameVerifier { p0, p1 -> true }
+    val hostnameVerifier = HostnameVerifier { _, _ -> true }
 
     val trustManager = object : X509TrustManager {
         override fun checkClientTrusted(p0: Array<out java.security.cert.X509Certificate>?, p1: String?) {
