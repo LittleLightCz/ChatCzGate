@@ -25,6 +25,8 @@ object ChatCzGate {
 
         while (true) {
             val connection = serverSocket.accept()
+            log.info("Accepted connection from ${connection.inetAddress.hostAddress}")
+
             Thread(IrcLayer(connection)).start()
         }
     }
