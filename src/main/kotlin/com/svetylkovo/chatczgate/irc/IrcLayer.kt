@@ -324,6 +324,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         log.info("INVITE command handler not implemented. Arguments: ${args}")
     }
 
+    @Synchronized
     private fun socketSend(message: String) {
         log.debug("Sending: $message")
         writer.write("$message $NEWLINE")
@@ -426,10 +427,16 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
     }
 
-    override fun newMessage(room: Room, user: User, text: String, whisper: Boolean) {
+    override fun newMessage(room: Room, user: User, text: String) {
         if (user.nick != nick) {
-            val to = if (whisper) nick else "#${room.name}"
+            val to = "#${room.name}"
             replyPrivmsg(user.nick.toWhitespace(), to.toWhitespace(), text)
+        }
+    }
+
+    override fun newPrivateMessage(user: User, text: String) {
+        if (user.nick != nick) {
+            replyPrivmsg(user.nick.toWhitespace(), nick.toWhitespace(), text)
         }
     }
 

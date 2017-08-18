@@ -19,6 +19,7 @@ import kotlin.concurrent.schedule
 
 class ChatApi(val chatEvent: ChatEvent) {
 
+    private val STORED_MESSAGES_CHECK_INTERVAL: Long = 5 * 1000
     private val MESSAGES_CHECK_INTERVAL: Long = 5 * 1000
     private val USERS_CHECK_INTERVAL: Long = 50 * 1000
 
@@ -45,13 +46,17 @@ class ChatApi(val chatEvent: ChatEvent) {
         timer.schedule(0, MESSAGES_CHECK_INTERVAL) {
             messagesCheck()
         }
+
+        timer.schedule(0, STORED_MESSAGES_CHECK_INTERVAL) {
+            storedMessagesCheck()
+        }
     }
 
     @Synchronized
     private fun usersCheck() {
         try {
             if (loggedIn) {
-                service.pingHeader()
+                service.getChatHeader()
                 rooms.forEach { service.pingRoomUserTime(it) }
             }
         } catch (t: Throwable) {
@@ -82,6 +87,35 @@ class ChatApi(val chatEvent: ChatEvent) {
             log.error("JSON mapping failed", e)
         } catch (t: Throwable) {
             log.error("Error during new messages check!", t)
+        }
+    }
+
+    private fun storedMessagesCheck() {
+        try {
+            log.debug("Checking for stored messages ...")
+
+            service.getChatHeader()?.headerData?.msgCount?.let { msgCount ->
+
+                if (msgCount > 0) {
+                    service.getStoredMessagesUsers()
+                            ?.map { it.uid }
+                            ?.map { service.getStoredMessages(it)?.storedMessages }
+                            ?.filterNotNull()
+                            ?.flatten()
+                            ?.filter { !it.fromYourself }
+                            ?.sortedByDescending { it.date }
+                            ?.take(msgCount)
+                            ?.forEach { message ->
+                                message.userFromUid?.let { uid ->
+                                    UsersCache.getByUid(uid)?.let { user ->
+                                        chatEvent.newPrivateMessage(user, "[VZKAZ] ${message.text}")
+                                    }
+                                }
+                            }
+                }
+            }
+        } catch (t: Throwable) {
+            log.error("Error during stored messages check!", t)
         }
     }
 
@@ -241,10 +275,10 @@ class ChatApi(val chatEvent: ChatEvent) {
 
                     if (message.w != null) {
                         if (message.to == 0 && room == rooms.first()) {
-                            chatEvent.newMessage(room, user, text, true)
+                            chatEvent.newPrivateMessage(user, text)
                         }
                     } else {
-                        chatEvent.newMessage(room, user, text, false)
+                        chatEvent.newMessage(room, user, text)
                     }
                 } else {
                     val warnMessage = "Unknown UID: ${message.uid} -> ${message.t}"

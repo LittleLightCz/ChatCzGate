@@ -41,9 +41,11 @@ class ChatService {
         client.pingLoginPage().execute()
     }
 
-    fun pingHeader() {
-        client.pingHeader().execute()
-    }
+    fun getChatHeader() = client.getChatHeader().bodyOrError()
+
+    fun getStoredMessagesUsers() = client.getStoredMessagesUsers().bodyOrError()?.users
+
+    fun getStoredMessages(uid: Int) = client.getStoredMessages(uid).bodyOrError()
 
     fun pingRoomUserTime(room: Room) {
         client.pingRoomUserTime(room.roomId).execute()
