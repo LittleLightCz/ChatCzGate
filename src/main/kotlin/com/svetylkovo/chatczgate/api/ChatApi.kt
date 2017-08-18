@@ -22,7 +22,7 @@ class ChatApi(private val chatEvent: ChatEvent) {
 
     private val STORED_MESSAGE_DATE_FORMAT = SimpleDateFormat("dd.MM.yyyy HH:mm:ss")
 
-    private val STORED_MESSAGES_CHECK_INTERVAL: Long = 2 * 60 * 1000
+    private val STORED_MESSAGES_CHECK_INTERVAL: Long = 1 * 60 * 1000
     private val MESSAGES_CHECK_INTERVAL: Long = 5 * 1000
     private val USERS_CHECK_INTERVAL: Long = 50 * 1000
 
@@ -100,8 +100,6 @@ class ChatApi(private val chatEvent: ChatEvent) {
             service.getChatHeader()?.headerData?.msgCount?.let { msgCount ->
 
                 if (msgCount > 0) {
-                    service.pingStoredMessagesPage()
-
                     service.getStoredMessagesUsers()
                             ?.asSequence()
                             ?.map { it.uid }
@@ -120,6 +118,8 @@ class ChatApi(private val chatEvent: ChatEvent) {
                                     }
                                 }
                             }
+
+                    service.pingStoredMessagesPage()
                 }
             }
         } catch (t: Throwable) {
