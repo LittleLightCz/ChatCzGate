@@ -41,6 +41,10 @@ class ChatService {
         client.pingLoginPage().execute()
     }
 
+    fun pingStoredMessagesPage() {
+        client.pingStoredMessagesPage().execute()
+    }
+
     fun getChatHeader() = client.getChatHeader().bodyOrError()
 
     fun getStoredMessagesUsers() = client.getStoredMessagesUsers().bodyOrError()?.users

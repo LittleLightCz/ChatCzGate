@@ -19,7 +19,7 @@ import kotlin.concurrent.schedule
 
 class ChatApi(val chatEvent: ChatEvent) {
 
-    private val STORED_MESSAGES_CHECK_INTERVAL: Long = 5 * 1000
+    private val STORED_MESSAGES_CHECK_INTERVAL: Long = 2 * 60 * 1000
     private val MESSAGES_CHECK_INTERVAL: Long = 5 * 1000
     private val USERS_CHECK_INTERVAL: Long = 50 * 1000
 
@@ -97,6 +97,8 @@ class ChatApi(val chatEvent: ChatEvent) {
             service.getChatHeader()?.headerData?.msgCount?.let { msgCount ->
 
                 if (msgCount > 0) {
+                    service.pingStoredMessagesPage()
+
                     service.getStoredMessagesUsers()
                             ?.map { it.uid }
                             ?.map { service.getStoredMessages(it)?.storedMessages }

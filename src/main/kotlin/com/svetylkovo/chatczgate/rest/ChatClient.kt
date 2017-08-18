@@ -19,6 +19,9 @@ interface ChatClient {
     @GET("/login")
     fun pingLoginPage(): Call<Void>
 
+    @GET("/msg")
+    fun pingStoredMessagesPage(): Call<Void>
+
     @POST("/json/getHeader")
     fun getChatHeader(): Call<ChatHeader>
 
