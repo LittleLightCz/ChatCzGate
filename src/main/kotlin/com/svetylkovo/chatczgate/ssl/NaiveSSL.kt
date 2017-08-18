@@ -5,10 +5,7 @@ import javax.net.ssl.*
 
 object NaiveSSL {
 
-    val hostnameVerifier = object: HostnameVerifier {
-        override fun verify(p0: String?, p1: SSLSession?) = true
-    }
-
+    val hostnameVerifier = HostnameVerifier { p0, p1 -> true }
 
     val trustManager = object : X509TrustManager {
         override fun checkClientTrusted(p0: Array<out java.security.cert.X509Certificate>?, p1: String?) {
@@ -28,7 +25,7 @@ object NaiveSSL {
         val sslContext = SSLContext.getInstance("SSL")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
         // Create an ssl socket factory with our all-trusting manager
-        return sslContext.getSocketFactory()
+        return sslContext.socketFactory
     }
 
 }

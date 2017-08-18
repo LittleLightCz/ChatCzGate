@@ -15,7 +15,7 @@ object ChatCzGate {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        PropertyConfigurator.configure("log4j.properties");
+        PropertyConfigurator.configure("log4j.properties")
 
         val port = Config.IRC_PORT
 

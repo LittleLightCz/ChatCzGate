@@ -5,6 +5,7 @@ import com.svetylkovo.chatczgate.beans.rojo.PrivmsgCommand
 import com.svetylkovo.chatczgate.irc.IrcLayer
 import com.svetylkovo.chatczgate.plugins.Plugin
 import com.svetylkovo.rojo.Rojo
+import com.svetylkovo.rojo.matcher.RojoMatcher
 import org.ini4j.Ini
 
 
@@ -207,7 +208,7 @@ class SmileysPlugin : Plugin {
             "Žárovka" to listOf(163)
         )
 
-    val smileyMatcher = Rojo.matcher("\\*(\\d+)\\*")
+    private val smileyMatcher: RojoMatcher = Rojo.matcher("\\*(\\d+)\\*")
 
     override fun init(config: Ini) {
         enabled = config.get("Smileys", "enabled")?.toBoolean() ?: false

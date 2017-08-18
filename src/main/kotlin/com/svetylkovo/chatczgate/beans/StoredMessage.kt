@@ -16,7 +16,7 @@ class StoredMessage {
     var userFromUid: Int? = null
 
     @JsonProperty("time_create")
-    var timeCreate: String? = null
+    private var timeCreate: String? = null
 
     @JsonProperty("whisp")
     var text = ""
