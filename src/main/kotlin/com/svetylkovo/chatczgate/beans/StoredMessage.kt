@@ -21,11 +21,11 @@ class StoredMessage {
     @JsonProperty("whisp")
     var text = ""
 
-    val date by lazy {
+    val date: Date by lazy {
         if (timeCreate != null) {
             SimpleDateFormat(TIME_CREATE_FORMAT, Locale.US).parse(timeCreate)
         } else {
-            Date(Long.MAX_VALUE)
+            Date(0)
         }
     }
 }
