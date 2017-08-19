@@ -14,11 +14,15 @@ import org.apache.commons.lang3.StringEscapeUtils
 import org.jsoup.Jsoup
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.concurrent.schedule
 
-class ChatApi(val chatEvent: ChatEvent) {
+class ChatApi(private val chatEvent: ChatEvent) {
 
+    private val STORED_MESSAGE_DATE_FORMAT = SimpleDateFormat("dd.MM.yyyy HH:mm:ss")
+
+    private val STORED_MESSAGES_CHECK_INTERVAL: Long = 1 * 60 * 1000
     private val MESSAGES_CHECK_INTERVAL: Long = 5 * 1000
     private val USERS_CHECK_INTERVAL: Long = 50 * 1000
 
@@ -32,7 +36,7 @@ class ChatApi(val chatEvent: ChatEvent) {
 
     var loggedIn = false
 
-    var idleStrings = Config.IDLE_STRINGS
+    private var idleStrings = Config.IDLE_STRINGS
 
     init {
         log.info("Getting cookies ...")
@@ -45,13 +49,17 @@ class ChatApi(val chatEvent: ChatEvent) {
         timer.schedule(0, MESSAGES_CHECK_INTERVAL) {
             messagesCheck()
         }
+
+        timer.schedule(0, STORED_MESSAGES_CHECK_INTERVAL) {
+            storedMessagesCheck()
+        }
     }
 
     @Synchronized
     private fun usersCheck() {
         try {
             if (loggedIn) {
-                service.pingHeader()
+                service.getChatHeader()
                 rooms.forEach { service.pingRoomUserTime(it) }
             }
         } catch (t: Throwable) {
@@ -85,10 +93,43 @@ class ChatApi(val chatEvent: ChatEvent) {
         }
     }
 
+    private fun storedMessagesCheck() {
+        try {
+            log.debug("Checking for stored messages ...")
+
+            service.getChatHeader()?.headerData?.msgCount?.let { msgCount ->
+
+                if (msgCount > 0) {
+                    service.getStoredMessagesUsers()
+                            ?.asSequence()
+                            ?.map { it.uid }
+                            ?.map { service.getStoredMessages(it)?.storedMessages }
+                            ?.filterNotNull()
+                            ?.flatten()
+                            ?.filter { !it.fromYourself }
+                            ?.sortedByDescending { it.date }
+                            ?.take(msgCount)
+                            ?.sortedBy { it.date }
+                            ?.forEach { message ->
+                                message.userFromUid?.let { uid ->
+                                    UsersCache.getByUid(uid)?.let { user ->
+                                        val msgDate = STORED_MESSAGE_DATE_FORMAT.format(message.date)
+                                        chatEvent.newPrivateMessage(user, "[MESSAGE - $msgDate] ${message.text}")
+                                    }
+                                }
+                            }
+
+                    service.pingStoredMessagesPage()
+                }
+            }
+        } catch (t: Throwable) {
+            log.error("Error during stored messages check!", t)
+        }
+    }
+
     @Synchronized
-    fun getUserByName(name: String) =
-            rooms.map { it.getUserByName(name) }
-                    .filterNotNull()
+    private fun getUserByName(name: String) =
+            rooms.mapNotNull { it.getUserByName(name) }
                     .firstOrNull()
                     ?: UsersCache.getByName(name)
 
@@ -129,12 +170,14 @@ class ChatApi(val chatEvent: ChatEvent) {
 
         loggedIn = false
 
-        if (isLoggedPage(resp)) {
-            log.info("Login successful!")
-            loggedIn = true
-        } else if (alert != null) {
-            throw RuntimeException(alert.text().trim())
-        } else throw RuntimeException("Failed to login for unknown reason.")
+        when {
+            isLoggedPage(resp) -> {
+                log.info("Login successful!")
+                loggedIn = true
+            }
+            alert != null -> throw RuntimeException(alert.text().trim())
+            else -> throw RuntimeException("Failed to login for unknown reason.")
+        }
     }
 
     private fun isLoggedPage(html: String): Boolean {
@@ -144,8 +187,7 @@ class ChatApi(val chatEvent: ChatEvent) {
     }
 
     private fun getIdlerMessage(lastMessage: String): String {
-        val idleString = idleStrings.filter { it != lastMessage }
-                .firstOrNull() ?: "..."
+        val idleString = idleStrings.firstOrNull { it != lastMessage } ?: "..."
 
         Collections.rotate(idleStrings, 1)
         return idleString
@@ -241,10 +283,10 @@ class ChatApi(val chatEvent: ChatEvent) {
 
                     if (message.w != null) {
                         if (message.to == 0 && room == rooms.first()) {
-                            chatEvent.newMessage(room, user, text, true)
+                            chatEvent.newPrivateMessage(user, text)
                         }
                     } else {
-                        chatEvent.newMessage(room, user, text, false)
+                        chatEvent.newMessage(room, user, text)
                     }
                 } else {
                     val warnMessage = "Unknown UID: ${message.uid} -> ${message.t}"
@@ -302,7 +344,7 @@ class ChatApi(val chatEvent: ChatEvent) {
 
         val msg = toUser?.let { user -> "/w $user $text" } ?: text
 
-        log.debug("[${room.roomId},$toUser] Sending: ${msg}")
+        log.debug("[${room.roomId},$toUser] Sending: $msg")
         val resp = service.say(room, msg)
 
         resp?.data?.let { roomData ->

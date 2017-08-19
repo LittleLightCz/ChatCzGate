@@ -6,7 +6,9 @@ import com.svetylkovo.chatczgate.beans.User
 
 interface ChatEvent {
 
-    fun newMessage(room: Room, user: User, text: String, whisper: Boolean)
+    fun newMessage(room: Room, user: User, text: String)
+
+    fun newPrivateMessage(user: User, text: String)
 
     fun userJoined(room: Room, user: User)
 

@@ -26,9 +26,9 @@ object Plugins {
     }
 
 
-    fun getLoadedPluginsInfo(): String = "Loaded plugins: "+plugins.map { it.name }.joinToString(", ")
+    fun getLoadedPluginsInfo(): String = "Loaded plugins: " + plugins.map { it.name }.joinToString(", ")
 
-    fun getDisabledPluginsInfo(): String = "Disabled plugins:"+plugins.filter { !it.enabled }
+    fun getDisabledPluginsInfo(): String = "Disabled plugins:" + plugins.filter { !it.enabled }
             .map { it.name }
             .joinToString(", ")
 

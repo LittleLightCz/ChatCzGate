@@ -28,16 +28,16 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     private val reader = conn.getInputStream().reader().buffered()
     private val writer = conn.getOutputStream().writer().buffered()
 
-    val chatApi = ChatApi(this)
+    private val chatApi = ChatApi(this)
 
-    var nick = ""
+    private var nick = ""
         get() = if (field.isEmpty()) userName else field
 
-    var userName = ""
-    var password = ""
-    var hostname = "chat.cz"
+    private var userName = ""
+    private var password = ""
+    private var hostname = "chat.cz"
 
-    var run = true
+    private var run = true
 
     private val commandMatcher = Rojo.of(IrcCommand::class.java)
     private val kickMatcher = Rojo.matcher("#(\\S+)\\s+(\\S+)\\s+:(.+)")
@@ -309,32 +309,33 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handleOper(args: String) {
-        log.info("OPER command handler not implemented. Arguments: ${args}")
+        log.info("OPER command handler not implemented. Arguments: $args")
     }
 
     private fun handleTopic(args: String) {
-        log.info("TOPIC command handler not implemented. Arguments: ${args}")
+        log.info("TOPIC command handler not implemented. Arguments: $args")
     }
 
     private fun handleNames(args: String) {
-        log.info("NAMES command handler not implemented. Arguments: ${args}")
+        log.info("NAMES command handler not implemented. Arguments: $args")
     }
 
     private fun handleInvite(args: String) {
-        log.info("INVITE command handler not implemented. Arguments: ${args}")
+        log.info("INVITE command handler not implemented. Arguments: $args")
     }
 
+    @Synchronized
     private fun socketSend(message: String) {
         log.debug("Sending: $message")
         writer.write("$message $NEWLINE")
         writer.flush()
     }
 
-    fun replyJoin(name: String, channel: String) = socketSend(":$name JOIN $channel")
+    private fun replyJoin(name: String, channel: String) = socketSend(":$name JOIN $channel")
 
-    fun replyPart(name: String, channel: String) = socketSend(":$name PART $channel")
+    private fun replyPart(name: String, channel: String) = socketSend(":$name PART $channel")
 
-    fun replyPrivmsg(sender: String, to: String, text: String) = socketSend(":$sender PRIVMSG $to :$text")
+    private fun replyPrivmsg(sender: String, to: String, text: String) = socketSend(":$sender PRIVMSG $to :$text")
 
     fun replyNotice(channel: String, message: String) = socketSend(":$hostname NOTICE $channel :$message")
 
@@ -342,11 +343,11 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         chatApi.getActiveRoomNames().forEach { replyNotice("#$it".toWhitespace(), message) }
     }
 
-    fun replyMode(channel: String, mode: String, nick: String) = socketSend(":$hostname MODE $channel $mode $nick")
+    private fun replyMode(channel: String, mode: String, nick: String) = socketSend(":$hostname MODE $channel $mode $nick")
 
-    fun replyKick(channel: String, reason: String) = socketSend(":$hostname KICK $channel $nick $reason")
+    private fun replyKick(channel: String, reason: String) = socketSend(":$hostname KICK $channel $nick $reason")
 
-    fun notEnoughArgsReply(commandName: String) = reply(461, "$commandName :Not enough parameters")
+    private fun notEnoughArgsReply(commandName: String) = reply(461, "$commandName :Not enough parameters")
 
     private fun reply(responseNumber: Int, message: String) {
         val formattedResp = String.format("%03d", responseNumber)
@@ -366,7 +367,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
 
         ########################################
 
-        Welcome to the ChatCzGate ${VERSION}!
+        Welcome to the ChatCzGate $VERSION!
 
         Website: https://github.com/LittleLightCz/ChatCzGate
         Credits: Svetylk0, Imrija
@@ -426,10 +427,16 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
     }
 
-    override fun newMessage(room: Room, user: User, text: String, whisper: Boolean) {
+    override fun newMessage(room: Room, user: User, text: String) {
         if (user.nick != nick) {
-            val to = if (whisper) nick else "#${room.name}"
+            val to = "#${room.name}"
             replyPrivmsg(user.nick.toWhitespace(), to.toWhitespace(), text)
+        }
+    }
+
+    override fun newPrivateMessage(user: User, text: String) {
+        if (user.nick != nick) {
+            replyPrivmsg(user.nick.toWhitespace(), nick.toWhitespace(), text)
         }
     }
 

@@ -1,6 +1,9 @@
 package com.svetylkovo.chatczgate.rest
 
+import com.svetylkovo.chatczgate.beans.ChatHeader
 import com.svetylkovo.chatczgate.beans.RestResponse
+import com.svetylkovo.chatczgate.beans.StoredMessages
+import com.svetylkovo.chatczgate.beans.StoredMessagesUsers
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.*
@@ -16,8 +19,22 @@ interface ChatClient {
     @GET("/login")
     fun pingLoginPage(): Call<Void>
 
+    @GET("/msg")
+    fun pingStoredMessagesPage(): Call<Void>
+
     @POST("/json/getHeader")
-    fun pingHeader(): Call<Void>
+    fun getChatHeader(): Call<ChatHeader>
+
+    @FormUrlEncoded
+    @POST("/json/getMsgUserList")
+    fun getStoredMessagesUsers(
+            @Field("offset") offset: Int = 0,
+            @Field("limit") limit: Int = 100
+    ): Call<StoredMessagesUsers>
+
+    @FormUrlEncoded
+    @POST("/json/getMessage")
+    fun getStoredMessages(@Field("userId") userId: Int): Call<StoredMessages>
 
     @FormUrlEncoded
     @POST("/json/getRoomUserTime")
