@@ -101,7 +101,6 @@ class ChatApi(private val chatEvent: ChatEvent) {
             log.debug("Checking for stored messages ...")
 
             service.getChatHeader()?.headerData?.msgCount?.let { msgCount ->
-
                 if (msgCount > 0) {
                     service.getStoredMessagesUsers()
                             ?.asSequence()
@@ -117,7 +116,12 @@ class ChatApi(private val chatEvent: ChatEvent) {
                                 message.userFromUid?.let { uid ->
                                     UsersCache.getByUid(uid)?.let { user ->
                                         val msgDate = STORED_MESSAGE_DATE_FORMAT.format(message.date)
-                                        chatEvent.newPrivateMessage(user, "[MESSAGE - $msgDate] ${message.text}")
+                                        chatEvent.newPrivateMessage(user, "[MESSAGE from $msgDate]")
+
+                                        message.text.split("<br />")
+                                            .map { it.trim() }
+                                            .filter { it.isNotEmpty() }
+                                            .forEach { chatEvent.newPrivateMessage(user, it) }
                                     }
                                 }
                             }
