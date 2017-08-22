@@ -212,7 +212,7 @@ class ChatApi(private val chatEvent: ChatEvent) {
         }
     }
 
-    private fun shouldIdle(room: Room) = System.currentTimeMillis() - room.timestamp > MAX_IDLE_MINUTES * 60 * 1000
+    private fun shouldIdle(room: Room) = System.currentTimeMillis() - room.idleTimestamp > MAX_IDLE_MINUTES * 60 * 1000
 
     @Synchronized
     private fun removeRoom(room: Room) {
@@ -240,7 +240,14 @@ class ChatApi(private val chatEvent: ChatEvent) {
     private fun processRoomMessages(room: Room, resp: RestResponse) {
         if (resp.status == 200) {
             resp.data?.index?.let { room.chatIndex = it }
-            resp.data?.data?.forEach { processMessage(room, it) }
+            resp.data
+                ?.data
+                ?.filter { it.timestamp > room.lastMessageTimestamp }
+                ?.sortedBy { it.timestamp }
+                ?.forEach {
+                    room.lastMessageTimestamp = it.timestamp
+                    processMessage(room, it)
+                }
         } else {
             when (resp.statusMessage) {
                 "User in room NOT_FOUND" -> {
@@ -359,7 +366,7 @@ class ChatApi(private val chatEvent: ChatEvent) {
         val resp = service.say(room, msg)
 
         resp?.data?.let { roomData ->
-            room.timestamp = System.currentTimeMillis()
+            room.idleTimestamp = System.currentTimeMillis()
             room.lastMessage = text
 
             if (room.chatIndex == roomData.index) {

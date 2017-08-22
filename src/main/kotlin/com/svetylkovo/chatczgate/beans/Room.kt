@@ -13,9 +13,11 @@ class Room
         var admins: List<String> = ArrayList(),
         var chatIndex: String = "",
         var lastMessage: String = "",
-        var timestamp: Long = Date().time
+        var idleTimestamp: Long = Date().time
 ) {
     val users = ArrayList<User>()
+
+    var lastMessageTimestamp = 0L
 
     fun hasUser(user: User): Boolean {
         return users.find { it.uid == user.uid } != null
