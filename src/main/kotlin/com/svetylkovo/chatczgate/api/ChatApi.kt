@@ -102,29 +102,19 @@ class ChatApi(private val chatEvent: ChatEvent) {
 
             service.getChatHeader()?.headerData?.msgCount?.let { msgCount ->
                 if (msgCount > 0) {
-                    service.getStoredMessagesUsers()
-                            ?.asSequence()
-                            ?.map { it.uid }
-                            ?.map { service.getStoredMessages(it)?.storedMessages }
-                            ?.filterNotNull()
-                            ?.flatten()
-                            ?.filter { !it.fromYourself }
-                            ?.sortedByDescending { it.date }
-                            ?.take(msgCount)
-                            ?.sortedBy { it.date }
-                            ?.forEach { message ->
-                                message.userFromUid?.let { uid ->
-                                    UsersCache.getByUid(uid)?.let { user ->
-                                        val msgDate = STORED_MESSAGE_DATE_FORMAT.format(message.date)
-                                        chatEvent.newPrivateMessage(user, "[MESSAGE from $msgDate]")
+                    service.getNewestStoredMessages(msgCount).forEach { message ->
+                        message.userFromUid?.let { uid ->
+                            UsersCache.getByUid(uid)?.let { user ->
+                                val msgDate = STORED_MESSAGE_DATE_FORMAT.format(message.date)
+                                chatEvent.newPrivateMessage(user, "[MESSAGE from $msgDate]")
 
-                                        message.text.split("<br />")
-                                            .map { it.trim() }
-                                            .filter { it.isNotEmpty() }
-                                            .forEach { chatEvent.newPrivateMessage(user, it) }
-                                    }
-                                }
+                                message.text.split("<br />")
+                                        .map { it.trim() }
+                                        .filter { it.isNotEmpty() }
+                                        .forEach { chatEvent.newPrivateMessage(user, it) }
                             }
+                        }
+                    }
 
                     service.pingStoredMessagesPage()
                 }

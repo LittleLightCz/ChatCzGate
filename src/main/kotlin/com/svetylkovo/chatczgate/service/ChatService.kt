@@ -47,9 +47,21 @@ class ChatService {
 
     fun getChatHeader() = client.getChatHeader().bodyOrError()
 
-    fun getStoredMessagesUsers() = client.getStoredMessagesUsers().bodyOrError()?.users
+    fun getStoredMessagesUsers() = client.getStoredMessagesUsers().bodyOrError()?.users ?: emptyList()
 
-    fun getStoredMessages(uid: Int) = client.getStoredMessages(uid).bodyOrError()
+    fun getStoredMessages(uid: Int) = client.getStoredMessages(uid).bodyOrError()?.storedMessages ?: emptyList()
+
+    fun getAllReceivedStoredMessages() = getStoredMessagesUsers()
+            .asSequence()
+            .map { it.uid }
+            .map { getStoredMessages(it) }
+            .flatten()
+            .filter { !it.fromYourself }
+
+    fun getNewestStoredMessages(messageCount: Int) = getAllReceivedStoredMessages()
+            .sortedByDescending { it.date }
+            .take(messageCount)
+            .sortedBy { it.date }
 
     fun pingRoomUserTime(room: Room) {
         client.pingRoomUserTime(room.roomId).execute()
