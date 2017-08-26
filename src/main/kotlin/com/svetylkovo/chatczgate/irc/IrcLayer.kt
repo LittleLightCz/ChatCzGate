@@ -91,6 +91,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
                 "USER" -> handleUser(args)
                 "LIST" -> handleList()
                 "JOIN" -> handleJoin(args)
+                "JOINR" -> handleJoinRoom(args.toWhitespace())
                 "PART" -> handlePart(args)
                 "WHO" -> handleWho(args)
                 "WHOIS" -> handleWhois(args)
@@ -158,30 +159,32 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         reply(323, ":End of /LIST")
     }
 
+    private fun handleJoinRoom(roomNameWs: String) {
+        val room = chatApi.getRoomByName(roomNameWs.fromWhitespace())
+
+        if (room != null) {
+            log.info("Joining room : ${room.name}")
+            chatApi.join(room)
+
+            socketSend(":$nick!$userName@$hostname JOIN #$roomNameWs")
+            reply(332, "#$roomNameWs :${room.description}")
+
+            val usersInRoom =  room.users
+                    .map { it.nick.toWhitespace() }
+                    .joinToString(" ")
+
+            reply(353, "= #$roomNameWs :$nick $usersInRoom")
+            reply(366, "#$roomNameWs :End of /NAMES list.")
+        } else {
+            log.error("Couldn't find the room for name: $roomNameWs")
+        }
+    }
+
     private fun handleJoin(args: String) {
         firstNonBlank.find(args).ifPresent {
             it.split(",")
                 .map { it.replaceFirst("#","") }
-                .forEach { roomName ->
-                    val room = chatApi.getRoomByName(roomName.fromWhitespace())
-
-                    if (room != null) {
-                        log.info("Joining room : ${room.name}")
-                        chatApi.join(room)
-
-                        socketSend(":$nick!$userName@$hostname JOIN #$roomName")
-                        reply(332, "#$roomName :${room.description}")
-
-                        val usersInRoom =  room.users
-                                .map { it.nick.toWhitespace() }
-                                .joinToString(" ")
-
-                        reply(353, "= #$roomName :$nick $usersInRoom")
-                        reply(366, "#$roomName :End of /NAMES list.")
-                    } else {
-                        log.error("Couldn't find the room for name: $roomName")
-                    }
-                }
+                .forEach { roomNameWs -> handleJoinRoom(roomNameWs) }
         }
     }
 
