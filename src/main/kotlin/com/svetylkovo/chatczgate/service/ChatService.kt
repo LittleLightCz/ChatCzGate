@@ -28,7 +28,6 @@ class ChatService {
                         )
                         .header("Origin", "https://chat.cz")
                         .header("Referer", "https://chat.cz/")
-
                         .build()
                     chain.proceed(request)
                 }
