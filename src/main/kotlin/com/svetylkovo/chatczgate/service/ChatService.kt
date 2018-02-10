@@ -15,25 +15,31 @@ import java.net.CookieManager
 class ChatService {
 
     private val client = Retrofit.Builder()
-            .baseUrl("https://chat.cz")
-            .client(
-                    OkHttpClient.Builder()
-                            .cookieJar(JavaNetCookieJar(CookieManager()))
-                            .addInterceptor { chain ->
-                                val request = chain.request()
-                                        .newBuilder()
-                                        .header("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36")
-                                        .build()
-                                chain.proceed(request)
-                            }
-//                            .addInterceptor(
-//                                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-//                            )
-                            .sslSocketFactory(NaiveSSL.getSocketFactory(), NaiveSSL.trustManager)
-                            .hostnameVerifier(NaiveSSL.hostnameVerifier)
-                            .build()
-            )
-            .addConverterFactory(JacksonConverterFactory.create())
+        .baseUrl("https://chat.cz")
+        .client(
+            OkHttpClient.Builder()
+                .cookieJar(JavaNetCookieJar(CookieManager()))
+                .addInterceptor { chain ->
+                    val request = chain.request()
+                        .newBuilder()
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36"
+                        )
+                        .header("Origin", "https://chat.cz")
+                        .header("Referer", "https://chat.cz/")
+
+                        .build()
+                    chain.proceed(request)
+                }
+//                .addInterceptor(
+//                    HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.HEADERS }
+//                )
+                .sslSocketFactory(NaiveSSL.getSocketFactory(), NaiveSSL.trustManager)
+                .hostnameVerifier(NaiveSSL.hostnameVerifier)
+                .build()
+        )
+        .addConverterFactory(JacksonConverterFactory.create())
             .build()
             .create(ChatClient::class.java)
 
