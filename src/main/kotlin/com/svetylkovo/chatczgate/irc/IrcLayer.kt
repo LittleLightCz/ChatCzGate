@@ -160,7 +160,14 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handleJoinRoom(roomNameWs: String) {
-        val room = chatApi.getRoomByName(roomNameWs.fromWhitespace())
+        val roomName = roomNameWs.fromWhitespace()
+        var room = chatApi.getRoomByName(roomName)
+
+        if (room == null) {
+            //Try to create the new room!
+            chatApi.createRoom(roomName)
+            room = chatApi.getRoomByName(roomName)
+        }
 
         if (room != null) {
             log.info("Joining room : ${room.name}")

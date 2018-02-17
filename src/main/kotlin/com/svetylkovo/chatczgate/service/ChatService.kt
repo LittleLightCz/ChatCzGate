@@ -39,8 +39,8 @@ class ChatService {
                 .build()
         )
         .addConverterFactory(JacksonConverterFactory.create())
-            .build()
-            .create(ChatClient::class.java)
+        .build()
+        .create(ChatClient::class.java)
 
     fun pingLoginPage() {
         client.pingLoginPage().execute()
@@ -86,7 +86,9 @@ class ChatService {
 
     fun logout() = client.logout().responseBodyString()
 
-    fun join(room: Room) = client.join(room.name).responseBodyString()
+    fun join(roomName: String) = client.join(roomName).responseBodyString()
+
+    fun join(room: Room) = join(room.name)
 
     fun getRoomUsers(room: Room) = client.getRoomUsers(room.roomId).bodyOrError()?.users
 

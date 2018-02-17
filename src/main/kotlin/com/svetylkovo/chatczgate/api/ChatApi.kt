@@ -337,6 +337,11 @@ class ChatApi(private val chatEvent: ChatEvent) {
         usersCheck()
     }
 
+    fun createRoom(roomName: String) {
+        log.info("Creating new room: #$roomName")
+        service.join(roomName)
+    }
+
     @Synchronized
     fun part(room: Room) {
         log.info("Leaving the room: ${room.name}")
