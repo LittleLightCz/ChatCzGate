@@ -62,7 +62,18 @@ interface ChatClient {
 
     @FormUrlEncoded
     @POST("/json/getText")
-    fun getRoomText(@Field("roomId") roomId: Int, @Field("chatIndex") chatIndex: String): Call<RestResponse>
+    fun getRoomText(
+        @Field("roomId") roomId: Int,
+        @Field("chatIndex") chatIndex: String
+    ): Call<RestResponse>
+
+    @FormUrlEncoded
+    @POST("json/setRoomSetting")
+    fun setRoomSettings(
+        @Field("roomId") roomId: Int,
+        @Field("description") description: String,
+        @Field("password") password: String
+    ): Call<ResponseBody>
 
     @GET("/logout")
     fun logout(): Call<ResponseBody>

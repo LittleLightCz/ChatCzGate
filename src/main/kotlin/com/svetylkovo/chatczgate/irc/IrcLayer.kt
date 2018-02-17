@@ -44,6 +44,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     private val modeMatcher = Rojo.matcher("#([^ ]+) \\+(\\w+) (.+)")
     private val passMatcher = Rojo.matcher("^:?(.+)")
     private val privmsgMatcher = Rojo.of(PrivmsgCommand::class.java)
+    private val topicMatcher = Rojo.matcher("#(\\S+) :(.*)")
     private val whoisMatcher = Rojo.matcher("[^ ]+")
     private val firstNonBlank = Rojo.matcher("^\\S+")
 
@@ -323,7 +324,15 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
     }
 
     private fun handleTopic(args: String) {
-        log.info("TOPIC command handler not implemented. Arguments: $args")
+        topicMatcher.forEach(args) { roomName, topic ->
+            val room = chatApi.getRoomByName(roomName.fromWhitespace())
+
+            if (room != null) {
+                chatApi.setRoomSettings(room, topic)
+            } else {
+                log.error("No room found for name: $roomName")
+            }
+        }
     }
 
     private fun handleNames(args: String) {

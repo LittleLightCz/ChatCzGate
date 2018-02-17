@@ -101,6 +101,7 @@ class ChatService {
 
     fun getRoomInfo(room: Room) = client.getRoomInfo(room.roomId).bodyOrError()?.room
 
+    fun setRoomSettings(room: Room, topic: String, password: String) = client.setRoomSettings(room.roomId, topic, password).execute()
 }
 
 private fun <T> Call<T>.bodyOrError(): T? {

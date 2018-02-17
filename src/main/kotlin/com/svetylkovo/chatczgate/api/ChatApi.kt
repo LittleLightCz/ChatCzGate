@@ -342,6 +342,12 @@ class ChatApi(private val chatEvent: ChatEvent) {
         service.join(roomName)
     }
 
+    fun setRoomSettings(room: Room, topic: String, password: String = "") {
+        log.info("Updating settings for room ${room.name} => topic: $topic, password: $password")
+        service.setRoomSettings(room, topic, password)
+        chatEvent.systemMessage(room, "Room settings updated => Topic: $topic, password: $password")
+    }
+
     @Synchronized
     fun part(room: Room) {
         log.info("Leaving the room: ${room.name}")
