@@ -1,1 +1,1 @@
-mvnw clean compile assembly:single
+gradlew clean jar
