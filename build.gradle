@@ -57,6 +57,9 @@ jar {
     from {
         configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
     }
+
+    destinationDir = file("$rootDir/target")
+    archiveName = "ChatCzGate.jar"
 }
 
 //inspectClassesForKotlinIC.enabled = false
