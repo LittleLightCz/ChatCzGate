@@ -12,7 +12,7 @@ room name is specified as is - without the # sign.
 How build
 ---------
 ```
-mvnw clean compile assembly:single
+gradlew clean jar
 ```
 
 How run
