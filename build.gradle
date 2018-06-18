@@ -1,0 +1,62 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'kotlin'
+
+group = 'com.svetylkovo'
+version = '1.0.3'
+
+description = """"""
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+buildscript {
+    ext.kotlin_version = '1.2.50'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    maven { url "http://repo.maven.apache.org/maven2" }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile group: 'com.squareup.retrofit2', name: 'retrofit', version: '2.3.0'
+    compile group: 'com.squareup.retrofit2', name: 'converter-jackson', version: '2.3.0'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.8.9'
+    compile group: 'com.squareup.okhttp3', name: 'okhttp', version: '3.8.1'
+    compile group: 'com.squareup.okhttp3', name: 'okhttp-urlconnection', version: '3.8.1'
+    compile group: 'com.squareup.okhttp3', name: 'logging-interceptor', version: '3.8.1'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+    compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.25'
+    compile group: 'org.jsoup', name: 'jsoup', version: '1.10.3'
+    compile group: 'com.svetylkovo', name: 'rojo', version: '1.0.3'
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.4'
+    compile group: 'org.ini4j', name: 'ini4j', version: '0.5.4'
+    compile group: 'org.reflections', name: 'reflections', version: '0.9.11'
+    compile group: 'com.github.ben-manes.caffeine', name: 'caffeine', version: '2.5.5'
+    testCompile group: 'org.jetbrains.kotlin', name: 'kotlin-test', version: '1.2.21'
+}
+
+jar {
+    manifest {
+        attributes "Main-Class": "com.svetylkovo.chatczgate.ChatCzGate"
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+//inspectClassesForKotlinIC.enabled = false
