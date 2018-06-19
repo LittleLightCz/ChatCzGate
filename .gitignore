@@ -1,6 +1,5 @@
 .idea/
 .gradle/
-gradle/
 target/
 log.out
 build/
