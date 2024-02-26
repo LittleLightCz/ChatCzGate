@@ -1,6 +1,6 @@
 package com.svetylkovo.chatczgate.irc
 
-import com.svetylkovo.chatczgate.ChatCzGate.VERSION
+import com.svetylkovo.chatczgate.VERSION
 import com.svetylkovo.chatczgate.api.ChatApi
 import com.svetylkovo.chatczgate.beans.Gender
 import com.svetylkovo.chatczgate.beans.Room
@@ -86,7 +86,7 @@ class IrcLayer(conn: Socket) : Runnable, ChatEvent {
         }
 
         try {
-            when (command.toUpperCase()) {
+            when (command.uppercase()) {
                 "PASS" -> handlePass(args)
                 "NICK" -> handleNick(args)
                 "USER" -> handleUser(args)

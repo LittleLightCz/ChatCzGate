@@ -7,11 +7,10 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 
+const val VERSION = "1.0.4"
 
 object ChatCzGate {
     private val log: Logger = LoggerFactory.getLogger(ChatCzGate::class.java)
-
-    val VERSION = "1.0.3"
 
     @JvmStatic
     fun main(args: Array<String>) {
